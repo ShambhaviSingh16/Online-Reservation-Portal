@@ -1,0 +1,48 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Add Train</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <jsp:include page="../navbar.jsp" />
+    
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>Add New Train</h4>
+            </div>
+            <div class="card-body">
+                <% if (request.getAttribute("error") != null) { %>
+                    <div class="alert alert-danger">${error}</div>
+                <% } %>
+                
+                <% if (request.getAttribute("success") != null) { %>
+                    <div class="alert alert-success">${success}</div>
+                <% } %>
+                
+                <form action="${pageContext.request.contextPath}/admin/train" method="post">
+                    <div class="mb-3">
+                        <label for="trainNumber" class="form-label">Train Number</label>
+                        <input type="text" class="form-control" id="trainNumber" name="trainNumber" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="trainName" class="form-label">Train Name</label>
+                        <input type="text" class="form-control" id="trainName" name="trainName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="totalSeats" class="form-label">Total Seats</label>
+                        <input type="number" class="form-control" id="totalSeats" name="totalSeats" required min="1">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Train</button>
+                    <a href="${pageContext.request.contextPath}/admin/manageTrains.jsp" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

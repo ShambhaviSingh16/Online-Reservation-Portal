@@ -1,0 +1,94 @@
+:root {
+  --primary: #3a86ff;       /* Vibrant blue */
+  --secondary: #8338ec;     /* Purple */
+  --success: #06d6a0;       /* Teal */
+  --light: #f8f9fa;
+  --dark: #212529;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f5f7fa;
+}
+
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+/* Home Page Styles */
+.home-page {
+    background-color: #f8f9fa;
+}
+
+.hero-section {
+    padding: 5rem 0;
+    background: linear-gradient(135deg, #007bff, #00b4ff);
+    color: white;
+}
+
+.hero-image {
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.features {
+    padding: 4rem 0;
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    color: #007bff;
+}
+
+/* Auth Pages */
+.auth-page {
+    background-color: #f8f9fa;
+    display: flex;
+    min-height: 100vh;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 400px;
+    margin: auto;
+}
+
+.auth-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* Navbar Styles */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        text-align: center;
+        padding: 3rem 0;
+    }
+    
+    .hero-image {
+        margin-top: 2rem;
+    }
+}
+
+/* Hover effects */
+.ticket-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.ticket-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+
+/* Button pulse */
+.btn-primary {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(58, 134, 255, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(58, 134, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(58, 134, 255, 0); }
+}
