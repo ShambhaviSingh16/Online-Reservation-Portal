@@ -115,5 +115,4 @@ This project is for educational and academic use. 🚀
 
 
 ## 🙋‍♂️ Author
-Shambhavi Singh
-📧 Sshambhavi89@gmail.com | [GitHub Profile]( https://github.com/ShambhaviSingh16)
+Shambhavi Singh | 📧 Sshambhavi89@gmail.com | [GitHub Profile]( https://github.com/ShambhaviSingh16)
