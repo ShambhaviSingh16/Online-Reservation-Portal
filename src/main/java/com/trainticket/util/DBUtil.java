@@ -7,18 +7,28 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class DBUtil {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/trainticketing";
-    private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "root"; // Change to your MySQL password
-    
+
+    private static final String DB_URL =
+        "jdbc:postgresql://dpg-d6flcofgi27c73fh8cvg-a.singapore-postgres.render.com:5432/trackease_db_1077";
+
+    private static final String DB_USER =
+        "trackease_db_1077_user";
+
+    private static final String DB_PASSWORD =
+        "hR80ojTJ1lOUTw1N21C6WQaCMnZXTIAA";
+
     public static Connection getConnection() throws SQLException {
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            Class.forName("org.postgresql.Driver");
+//            return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            System.out.println("✅ PostgreSQL Connected Successfully!");
+            return conn;
         } catch (ClassNotFoundException e) {
-            throw new SQLException("MySQL JDBC Driver not found", e);
+            throw new SQLException("PostgreSQL JDBC Driver not found", e);
         }
     }
+
     public static void closeResources(Connection conn, Statement stmt, ResultSet rs) {
         try { if (rs != null) rs.close(); } catch (SQLException e) { e.printStackTrace(); }
         try { if (stmt != null) stmt.close(); } catch (SQLException e) { e.printStackTrace(); }
