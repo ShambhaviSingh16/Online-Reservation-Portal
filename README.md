@@ -129,7 +129,6 @@ Built using Java Servlets, JSP, and PostgreSQL, following the MVC design pattern
 
 👉 https://trackease-njtn.onrender.com
 
----
 
 ## 📂 GitHub Repository
 
@@ -193,9 +192,12 @@ Built using Java Servlets, JSP, and PostgreSQL, following the MVC design pattern
    ```bash
     http://localhost:8080/TrackEase
 
-## 📸 Project Preview
+---
+
+<!--## 📸 Project Preview
 
 ---
+-->
 
 ## 🙋‍♂️ Author
 
@@ -204,6 +206,5 @@ Built using Java Servlets, JSP, and PostgreSQL, following the MVC design pattern
 - [GitHub Profile]( https://github.com/ShambhaviSingh16)
 - [Leetcode Profile](https://leetcode.com/u/ShambhaviSingh16/)
 
----
 
 ⭐ If you found this project helpful, consider giving it a star!
