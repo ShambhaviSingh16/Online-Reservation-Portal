@@ -45,7 +45,7 @@ Password: admin123
 ---
 
 ## Live Demo : 
-[Online Reservation Portal]()
+[Online Reservation Portal](https://trackease-njtn.onrender.com) 
 
 ## 📦 Database Schema
 
@@ -127,12 +127,12 @@ Built using Java Servlets, JSP, and PostgreSQL, following the MVC design pattern
 
 ## 🔗 Live Demo
 
-👉 https://trackease-njtn.onrender.com
+👉 [TrackEase: Online Reservation Portal](https://trackease-njtn.onrender.com)
 
 
-## 📂 GitHub Repository
+<!--## 📂 GitHub Repository
 
-👉 https://github.com/ShambhaviSingh16/Online-Reservation-Portal
+👉 [](https://github.com/ShambhaviSingh16/Online-Reservation-Portal)-->
 
 ---
 
