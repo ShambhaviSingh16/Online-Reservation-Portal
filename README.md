@@ -4,7 +4,7 @@
 An Online Train Ticket Reservation System built using Java, JSP, Servlets, and MySQL. This system allows users to register, search for available journeys, book train tickets, and manage their bookings. Admins can manage stations, trains, journeys, and user data efficiently via a backend interface.
 
 
-## 📌 Features
+## 📌 Feature
 
 ### 👤 User Features
 - User registration and login
