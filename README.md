@@ -1,4 +1,4 @@
-# 🚆 TrackEase — Online Ticket Reservation System
+# 🚆 TrackEase — Enterprise Railway Reservation Platform
 
 ![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square&logo=java)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen?style=flat-square&logo=springboot)
