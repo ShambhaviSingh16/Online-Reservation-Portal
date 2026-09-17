@@ -265,7 +265,7 @@ MCA Graduate | Software Engineer | VTU 2025
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/shambhavi-singh2023)
 [![GitHub](https://img.shields.io/badge/GitHub-Follow-black?style=flat-square&logo=github)](https://github.com/ShambhaviSingh16)
-[![LeetCode](https://img.shields.io/badge/LeetCode-180%2B%20Problems-orange?style=flat-square&logo=leetcode)](https://leetcode.com/u/ShambhaviSingh16/)
+[![LeetCode](https://img.shields.io/badge/LeetCode-280%2B%20Problems-orange?style=flat-square&logo=leetcode)](https://leetcode.com/u/ShambhaviSingh16/)
 [![Portfolio](https://img.shields.io/badge/Portfolio-Visit-purple?style=flat-square)](https://shambhavisingh.vercel.app/)
 
 📧 Sshambhavi89@gmail.com
