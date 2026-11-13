@@ -54,7 +54,7 @@ public class StationDAO {
     }
     
     public boolean deleteStation(int stationId) throws SQLException {
-        String sql = "DELETE FROM stations WHERE station_id=?";
+        String sql = "UPDATE stations SET is_active=FALSE WHERE station_id=? AND is_active";
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
@@ -64,7 +64,7 @@ public class StationDAO {
     }
     public List<Station> getAllStations() {
         List<Station> stations = new ArrayList<>();
-        String sql = "SELECT * FROM stations";
+        String sql = "SELECT * FROM stations WHERE is_active";
         
         try (Connection conn = DBUtil.getConnection();
              Statement stmt = conn.createStatement();
@@ -87,7 +87,7 @@ public class StationDAO {
     
     public Station getStationById(int stationId) {
         Station station = null;
-        String sql = "SELECT * FROM stations WHERE station_id = ?";
+        String sql = "SELECT * FROM stations WHERE station_id = ? AND is_active";
         
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

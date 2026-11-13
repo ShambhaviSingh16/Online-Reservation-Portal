@@ -5,12 +5,12 @@ import com.trainticket.dao.StationDAO;
 import com.trainticket.model.Station;
 import java.io.IOException;
 import java.net.URLEncoder;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/admin/station")
 public class AdminStationServlet extends HttpServlet {
@@ -81,7 +81,7 @@ public class AdminStationServlet extends HttpServlet {
             } else if ("delete".equals(action)) {
                 int stationId = Integer.parseInt(request.getParameter("stationId"));
                 success = stationDAO.deleteStation(stationId);
-                message = success ? "Station+deleted+successfully" : "Failed+to+delete+station";
+                message = success ? "Station+archived+successfully" : "Failed+to+delete+station";
             }
             
             response.sendRedirect(request.getContextPath() + 

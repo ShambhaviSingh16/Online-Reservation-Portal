@@ -1,0 +1,45 @@
+name: Build and verify TrackEase
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: trackease
+          POSTGRES_USER: trackease
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U trackease -d trackease"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@v4
+        with:
+          path: .local/maven-repository
+          key: maven-${{ runner.os }}-${{ hashFiles('pom.xml') }}
+      - name: Configure disposable CI database
+        run: |
+          cat > local.properties <<'CONFIG'
+          db.url=jdbc:postgresql://127.0.0.1:5433/trackease
+          db.user=trackease
+          db.password=ci-only-password
+          CONFIG
+      - name: Unit and PostgreSQL integration tests
+        run: mvn -B -Dtrackease.integration=true verify
+      - name: Build deployment image
+        run: docker build -t trackease:ci .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-results
+          path: target/surefire-reports

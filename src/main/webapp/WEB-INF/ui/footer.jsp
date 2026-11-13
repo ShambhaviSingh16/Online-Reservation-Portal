@@ -1,0 +1,3 @@
+<%@ taglib prefix="esc" uri="/WEB-INF/functions.tld" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<footer class="site-footer"><div class="shell footer-inner"><div><a class="footer-brand" href="${esc:html(pageContext.request.contextPath)}/">TrackEase<span style="color:var(--orange)">.</span></a><p>A better way to begin your journey.</p></div><div class="footer-links"><a href="${esc:html(pageContext.request.contextPath)}/user/bookTicket.jsp">Find trains</a><a href="${esc:html(pageContext.request.contextPath)}/user/tickets">My tickets</a><a href="${esc:html(pageContext.request.contextPath)}/#how-it-works">How it works</a></div><p>Railway reservation portfolio project<br>Demo bookings · No payment collected</p></div></footer>

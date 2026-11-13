@@ -1,0 +1,4 @@
+# Copy to local.properties. Do not commit local.properties.
+db.url=jdbc:postgresql://127.0.0.1:5433/trackease
+db.user=trackease
+db.password=replace-with-your-local-password

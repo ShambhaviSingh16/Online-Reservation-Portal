@@ -1,0 +1,9 @@
+.local
+.git
+.vscode
+target
+build
+bin
+*.war
+local.properties
+.env

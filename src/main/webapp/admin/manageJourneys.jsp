@@ -1,3 +1,4 @@
+<%@ taglib prefix="esc" uri="/WEB-INF/functions.tld" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="com.trainticket.model.Train" %>
 <%@ page import="com.trainticket.model.Station" %>
@@ -5,89 +6,18 @@
 <%@ page import="java.util.List" %>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<jsp:include page="../WEB-INF/ui/head.jsp" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Journeys | TrackEase Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --accent-color: #4895ef;
-            --dark-color: #212529;
-            --light-bg: #f8f9fa;
-        }
-        
-        .admin-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 1.5rem 0;
-            margin-bottom: 2rem;
-            border-radius: 0 0 15px 15px;
-        }
-        
-        .journey-card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-        }
-        
-        .journey-card:hover {
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .badge-journey {
-            background-color: var(--accent-color);
-            color: white;
-        }
-        .table-responsive {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .table {
-            margin-bottom: 0;
-        }
-        
-        .table thead th {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-        }
-        
-        .table tbody tr {
-            transition: all 0.2s ease;
-        }
-        
-        .table tbody tr:hover {
-            background-color: rgba(67, 97, 238, 0.05);
-        }
-        
-        .route-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0.5rem 0;
-        }
-        
-        .route-indicator i {
-            color: var(--primary-color);
-            margin: 0 0.5rem;
-        }
-        
-        .action-btn {
-            padding: 0.35rem 0.75rem;
-            font-size: 0.85rem;
-            border-radius: 6px;
-        }
-    </style>
+    
+    
+    
 </head>
-<body>
-    <jsp:include page="../navbar.jsp" />
+<body class="admin-page">
+    <jsp:include page="../navbar.jsp" /><span id="main-content" tabindex="-1"></span>
     
     <div class="admin-header">
         <div class="container">
@@ -108,22 +38,22 @@
     <div class="container mb-5">
         <% if (request.getAttribute("success") != null) { %>
             <div class="alert alert-success alert-dismissible fade show">
-                <i class="fas fa-check-circle me-2"></i>${success}
+                <i class="fas fa-check-circle me-2"></i>${esc:html(success)}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <% } %>
         
         <% if (request.getAttribute("error") != null) { %>
             <div class="alert alert-danger alert-dismissible fade show">
-                <i class="fas fa-exclamation-circle me-2"></i>${error}
+                <i class="fas fa-exclamation-circle me-2"></i>${esc:html(error)}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <script>
-                $(document).ready(function() {
+                document.addEventListener('DOMContentLoaded', function() {
                     <% if (request.getParameter("journeyId") == null) { %>
-                        $('#addJourneyModal').modal('show');
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('addJourneyModal')).show();
                     <% } else { %>
-                        $('#editJourneyModal').modal('show');
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('editJourneyModal')).show();
                     <% } %>
                 });
             </script>
@@ -151,38 +81,39 @@
                                     for (Journey journey : journeys) {
                             %>
                             <tr>
-                                <td><%= journey.getJourneyId() %></td>
+                                <td><%= com.trainticket.util.Html.escape(journey.getJourneyId()) %></td>
                                 <td>
-                                    <span class="badge badge-journey"><%= journey.getTrain().getTrainNumber() %></span>
-                                    <%= journey.getTrain().getTrainName() %>
+                                    <span class="badge badge-journey"><%= com.trainticket.util.Html.escape(journey.getTrain().getTrainNumber()) %></span>
+                                    <%= com.trainticket.util.Html.escape(journey.getTrain().getTrainName()) %>
                                 </td>
                                 <td>
-                                    <div><strong><%= journey.getDepartureStation().getStationCode() %></strong> to <strong><%= journey.getArrivalStation().getStationCode() %></strong></div>
-                                    <small class="text-muted"><%= journey.getDepartureStation().getStationName() %> → <%= journey.getArrivalStation().getStationName() %></small>
+                                    <div><strong><%= com.trainticket.util.Html.escape(journey.getDepartureStation().getStationCode()) %></strong> to <strong><%= com.trainticket.util.Html.escape(journey.getArrivalStation().getStationCode()) %></strong></div>
+                                    <small class="text-muted"><%= com.trainticket.util.Html.escape(journey.getDepartureStation().getStationName()) %> → <%= com.trainticket.util.Html.escape(journey.getArrivalStation().getStationName()) %></small>
                                 </td>
                                 <td>
-                                    <div><strong>Dep:</strong> <%= journey.getDepartureTime() %></div>
-                                    <div><strong>Arr:</strong> <%= journey.getArrivalTime() %></div>
+                                    <div><strong>Dep:</strong> <%= com.trainticket.util.Html.escape(journey.getDepartureTime()) %></div>
+                                    <div><strong>Arr:</strong> <%= com.trainticket.util.Html.escape(journey.getArrivalTime()) %></div>
                                 </td>
-                                <td>₹<%= journey.getFare() %></td>
-                                <td><%= journey.getAvailableSeats() %></td>
+                                <td>₹<%= com.trainticket.util.Html.escape(journey.getFare()) %></td>
+                                <td><%= com.trainticket.util.Html.escape(journey.getAvailableSeats()) %></td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-warning action-btn" data-bs-toggle="modal" data-bs-target="#editJourneyModal"
                                         onclick="setEditFormData(
-                                            '<%= journey.getJourneyId() %>',
-                                            '<%= journey.getTrain().getTrainId() %>',
-                                            '<%= journey.getDepartureStation().getStationId() %>',
-                                            '<%= journey.getArrivalStation().getStationId() %>',
-                                            '<%= journey.getDepartureTime().toString().replace(" ", "T") %>',
-                                            '<%= journey.getArrivalTime().toString().replace(" ", "T") %>',
-                                            '<%= journey.getFare() %>',
-                                            '<%= journey.getAvailableSeats() %>'
+                                            '<%= com.trainticket.util.Html.escape(journey.getJourneyId()) %>',
+                                            '<%= com.trainticket.util.Html.escape(journey.getTrain().getTrainId()) %>',
+                                            '<%= com.trainticket.util.Html.escape(journey.getDepartureStation().getStationId()) %>',
+                                            '<%= com.trainticket.util.Html.escape(journey.getArrivalStation().getStationId()) %>',
+                                            '<%= com.trainticket.util.Html.escape(journey.getDepartureTime().toString().replace(" ", "T")) %>',
+                                            '<%= com.trainticket.util.Html.escape(journey.getArrivalTime().toString().replace(" ", "T")) %>',
+                                            '<%= com.trainticket.util.Html.escape(journey.getFare()) %>',
+                                            '<%= com.trainticket.util.Html.escape(journey.getAvailableSeats()) %>'
                                         )">
                                         <i class="fas fa-edit me-1"></i>Edit
                                     </button>
                                     <form action="journey" method="post" style="display: inline;">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                                         <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="journeyId" value="<%= journey.getJourneyId() %>">
+                                        <input type="hidden" name="journeyId" value="<%= com.trainticket.util.Html.escape(journey.getJourneyId()) %>">
                                         <button type="submit" class="btn btn-sm btn-danger action-btn" 
                                             onclick="return confirm('Are you sure you want to delete this journey?')">
                                             <i class="fas fa-trash-alt me-1"></i>Delete
@@ -220,6 +151,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="journey" method="post">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="trainId" class="form-label">Train</label>
@@ -230,8 +162,8 @@
                                     if (trains != null) {
                                         for (Train train : trains) {
                                 %>
-                                <option value="<%= train.getTrainId() %>" <%= request.getParameter("trainId") != null && request.getParameter("trainId").equals(String.valueOf(train.getTrainId())) ? "selected" : "" %>>
-                                    <%= train.getTrainNumber() %> - <%= train.getTrainName() %>
+                                <option value="<%= com.trainticket.util.Html.escape(train.getTrainId()) %>" <%= com.trainticket.util.Html.escape(request.getParameter("trainId") != null && request.getParameter("trainId").equals(String.valueOf(train.getTrainId())) ? "selected" : "") %>>
+                                    <%= com.trainticket.util.Html.escape(train.getTrainNumber()) %> - <%= com.trainticket.util.Html.escape(train.getTrainName()) %>
                                 </option>
                                 <% 
                                         }
@@ -249,8 +181,8 @@
                                         if (stations != null) {
                                             for (Station station : stations) {
                                     %>
-                                    <option value="<%= station.getStationId() %>" <%= request.getParameter("departureStationId") != null && request.getParameter("departureStationId").equals(String.valueOf(station.getStationId())) ? "selected" : "" %>>
-                                        <%= station.getStationCode() %> - <%= station.getStationName() %>
+                                    <option value="<%= com.trainticket.util.Html.escape(station.getStationId()) %>" <%= com.trainticket.util.Html.escape(request.getParameter("departureStationId") != null && request.getParameter("departureStationId").equals(String.valueOf(station.getStationId())) ? "selected" : "") %>>
+                                        <%= com.trainticket.util.Html.escape(station.getStationCode()) %> - <%= com.trainticket.util.Html.escape(station.getStationName()) %>
                                     </option>
                                     <% 
                                             }
@@ -266,8 +198,8 @@
                                         if (stations != null) {
                                             for (Station station : stations) {
                                     %>
-                                    <option value="<%= station.getStationId() %>" <%= request.getParameter("arrivalStationId") != null && request.getParameter("arrivalStationId").equals(String.valueOf(station.getStationId())) ? "selected" : "" %>>
-                                        <%= station.getStationCode() %> - <%= station.getStationName() %>
+                                    <option value="<%= com.trainticket.util.Html.escape(station.getStationId()) %>" <%= com.trainticket.util.Html.escape(request.getParameter("arrivalStationId") != null && request.getParameter("arrivalStationId").equals(String.valueOf(station.getStationId())) ? "selected" : "") %>>
+                                        <%= com.trainticket.util.Html.escape(station.getStationCode()) %> - <%= com.trainticket.util.Html.escape(station.getStationName()) %>
                                     </option>
                                     <% 
                                             }
@@ -280,24 +212,24 @@
                             <div class="col-md-6 mb-3">
                                 <label for="departureTime" class="form-label">Departure Time</label>
                                 <input type="datetime-local" class="form-control" id="departureTime" name="departureTime" 
-                                    value="<%= request.getParameter("departureTime") != null ? request.getParameter("departureTime") : "" %>" required>
+                                    value="<%= com.trainticket.util.Html.escape(request.getParameter("departureTime") != null ? request.getParameter("departureTime") : "") %>" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="arrivalTime" class="form-label">Arrival Time</label>
                                 <input type="datetime-local" class="form-control" id="arrivalTime" name="arrivalTime" 
-                                    value="<%= request.getParameter("arrivalTime") != null ? request.getParameter("arrivalTime") : "" %>" required>
+                                    value="<%= com.trainticket.util.Html.escape(request.getParameter("arrivalTime") != null ? request.getParameter("arrivalTime") : "") %>" required>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="fare" class="form-label">Fare (₹)</label>
                                 <input type="number" step="0.01" class="form-control" id="fare" name="fare" 
-                                    value="<%= request.getParameter("fare") != null ? request.getParameter("fare") : "" %>" required>
+                                    value="<%= com.trainticket.util.Html.escape(request.getParameter("fare") != null ? request.getParameter("fare") : "") %>" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="availableSeats" class="form-label">Available Seats</label>
                                 <input type="number" class="form-control" id="availableSeats" name="availableSeats" 
-                                    value="<%= request.getParameter("availableSeats") != null ? request.getParameter("availableSeats") : "" %>" required>
+                                    value="<%= com.trainticket.util.Html.escape(request.getParameter("availableSeats") != null ? request.getParameter("availableSeats") : "") %>" required>
                             </div>
                         </div>
                     </div>
@@ -319,6 +251,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="journey" method="post">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" id="editJourneyId" name="journeyId">
                     <div class="modal-body">
@@ -330,7 +263,7 @@
                                     if (trains != null) {
                                         for (Train train : trains) {
                                 %>
-                                <option value="<%= train.getTrainId() %>"><%= train.getTrainNumber() %> - <%= train.getTrainName() %></option>
+                                <option value="<%= com.trainticket.util.Html.escape(train.getTrainId()) %>"><%= com.trainticket.util.Html.escape(train.getTrainNumber()) %> - <%= com.trainticket.util.Html.escape(train.getTrainName()) %></option>
                                 <% 
                                         }
                                     }
@@ -346,7 +279,7 @@
                                         if (stations != null) {
                                             for (Station station : stations) {
                                     %>
-                                    <option value="<%= station.getStationId() %>"><%= station.getStationCode() %> - <%= station.getStationName() %></option>
+                                    <option value="<%= com.trainticket.util.Html.escape(station.getStationId()) %>"><%= com.trainticket.util.Html.escape(station.getStationCode()) %> - <%= com.trainticket.util.Html.escape(station.getStationName()) %></option>
                                     <% 
                                             }
                                         }
@@ -361,7 +294,7 @@
                                         if (stations != null) {
                                             for (Station station : stations) {
                                     %>
-                                    <option value="<%= station.getStationId() %>"><%= station.getStationCode() %> - <%= station.getStationName() %></option>
+                                    <option value="<%= com.trainticket.util.Html.escape(station.getStationId()) %>"><%= com.trainticket.util.Html.escape(station.getStationCode()) %> - <%= com.trainticket.util.Html.escape(station.getStationName()) %></option>
                                     <% 
                                             }
                                         }
@@ -412,7 +345,7 @@
         }
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</body>
+    
+    <script src="${esc:html(pageContext.request.contextPath)}/assets/vendor/jquery.min.js"></script>
+<jsp:include page="../WEB-INF/ui/footer.jsp" /></body>
 </html>

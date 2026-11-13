@@ -1,0 +1,4 @@
+{
+  "version":"0.2.0",
+  "configurations":[{"type":"java","name":"Attach to local Tomcat (8000)","request":"attach","hostName":"127.0.0.1","port":8000}]
+}

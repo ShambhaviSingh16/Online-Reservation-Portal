@@ -1,78 +1,20 @@
+<%@ taglib prefix="esc" uri="/WEB-INF/functions.tld" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.util.List, com.trainticket.model.Station" %>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<jsp:include page="../WEB-INF/ui/head.jsp" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Stations | TrackEase Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --accent-color: #4895ef;
-            --dark-color: #212529;
-            --light-bg: #f8f9fa;
-        }
-        
-        .admin-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 1.5rem 0;
-            margin-bottom: 2rem;
-            border-radius: 0 0 15px 15px;
-        }
-        
-        .station-card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-        }
-        
-        .station-card:hover {
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-        }
-        .table-responsive {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .table {
-            margin-bottom: 0;
-        }
-        
-        .table thead th {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-        }
-        
-        .table tbody tr {
-            transition: all 0.2s ease;
-        }
-        
-        .table tbody tr:hover {
-            background-color: rgba(67, 97, 238, 0.05);
-        }
-        
-        .badge-station {
-            background-color: var(--accent-color);
-            color: white;
-        }
-        
-        .action-btn {
-            padding: 0.35rem 0.75rem;
-            font-size: 0.85rem;
-            border-radius: 6px;
-        }
-    </style>
+    
+    
+    
 </head>
-<body>
-    <jsp:include page="../navbar.jsp" />
+<body class="admin-page">
+    <jsp:include page="../navbar.jsp" /><span id="main-content" tabindex="-1"></span>
     
     <div class="admin-header">
         <div class="container">
@@ -93,22 +35,22 @@
     <div class="container mb-5">
         <% if (request.getAttribute("success") != null) { %>
             <div class="alert alert-success alert-dismissible fade show">
-                <i class="fas fa-check-circle me-2"></i>${success}
+                <i class="fas fa-check-circle me-2"></i>${esc:html(success)}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <% } %>
         
         <% if (request.getAttribute("error") != null) { %>
             <div class="alert alert-danger alert-dismissible fade show">
-                <i class="fas fa-exclamation-circle me-2"></i>${error}
+                <i class="fas fa-exclamation-circle me-2"></i>${esc:html(error)}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <script>
-                $(document).ready(function() {
+                document.addEventListener('DOMContentLoaded', function() {
                     <% if (request.getParameter("stationId") == null) { %>
-                        $('#addStationModal').modal('show');
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('addStationModal')).show();
                     <% } else { %>
-                        $('#editStationModal').modal('show');
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('editStationModal')).show();
                     <% } %>
                 });
             </script>
@@ -134,27 +76,28 @@
                                     for (Station station : stations) {
                             %>
                             <tr>
-                                <td><%= station.getStationId() %></td>
-                                <td><span class="badge badge-station"><%= station.getStationCode() %></span></td>
-                                <td><%= station.getStationName() %></td>
-                                <td><%= station.getCity() %>, <%= station.getState() %></td>
+                                <td><%= com.trainticket.util.Html.escape(station.getStationId()) %></td>
+                                <td><span class="badge badge-station"><%= com.trainticket.util.Html.escape(station.getStationCode()) %></span></td>
+                                <td><%= com.trainticket.util.Html.escape(station.getStationName()) %></td>
+                                <td><%= com.trainticket.util.Html.escape(station.getCity()) %>, <%= com.trainticket.util.Html.escape(station.getState()) %></td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-warning action-btn" 
                                         onclick="showEditModal(
-                                            '<%= station.getStationId() %>',
-                                            '<%= station.getStationCode() %>',
-                                            '<%= station.getStationName() %>',
-                                            '<%= station.getCity() %>',
-                                            '<%= station.getState() %>'
+                                            '<%= com.trainticket.util.Html.escape(station.getStationId()) %>',
+                                            '<%= com.trainticket.util.Html.escape(station.getStationCode()) %>',
+                                            '<%= com.trainticket.util.Html.escape(station.getStationName()) %>',
+                                            '<%= com.trainticket.util.Html.escape(station.getCity()) %>',
+                                            '<%= com.trainticket.util.Html.escape(station.getState()) %>'
                                         )">
                                         <i class="fas fa-edit me-1"></i>Edit
                                     </button>
                                     <form action="station" method="post" style="display: inline;">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                                         <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="stationId" value="<%= station.getStationId() %>">
+                                        <input type="hidden" name="stationId" value="<%= com.trainticket.util.Html.escape(station.getStationId()) %>">
                                         <button type="submit" class="btn btn-sm btn-danger action-btn" 
-                                            onclick="return confirm('Are you sure you want to delete this station?')">
-                                            <i class="fas fa-trash-alt me-1"></i>Delete
+                                            onclick="return confirm('Archive this station? Existing tickets will be preserved.')">
+                                            <i class="fas fa-box-archive me-1"></i>Archive
                                         </button>
                                     </form>
                                 </td>
@@ -189,6 +132,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="station" method="post">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="stationCode" class="form-label">Station Code</label>
@@ -227,29 +171,30 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="station" method="post">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                     <input type="hidden" name="action" value="edit">
-                    <input type="hidden" name="stationId" value="${param.stationId}">
+                    <input type="hidden" name="stationId" value="${esc:html(param.stationId)}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Station Code</label>
                             <input type="text" class="form-control" name="stationCode" 
-                                   value="${empty param.stationCode ? stationCode : param.stationCode}" required>
+                                   value="${esc:html(empty param.stationCode ? stationCode : param.stationCode)}" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Station Name</label>
                             <input type="text" class="form-control" name="stationName" 
-                                   value="${empty param.stationName ? stationName : param.stationName}" required>
+                                   value="${esc:html(empty param.stationName ? stationName : param.stationName)}" required>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">City</label>
                                 <input type="text" class="form-control" name="city" 
-                                       value="${empty param.city ? city : param.city}" required>
+                                       value="${esc:html(empty param.city ? city : param.city)}" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">State</label>
                                 <input type="text" class="form-control" name="state" 
-                                       value="${empty param.state ? state : param.state}" required>
+                                       value="${esc:html(empty param.state ? state : param.state)}" required>
                             </div>
                         </div>
                     </div>
@@ -262,8 +207,8 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script src="${esc:html(pageContext.request.contextPath)}/assets/vendor/jquery.min.js"></script>
     <script>
         function showEditModal(id, code, name, city, state) {
             $('input[name="stationId"]').val(id);
@@ -274,5 +219,5 @@
             new bootstrap.Modal(document.getElementById('editStationModal')).show();
         }
     </script>
-</body>
+<jsp:include page="../WEB-INF/ui/footer.jsp" /></body>
 </html>

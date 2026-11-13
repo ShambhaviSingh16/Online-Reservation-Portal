@@ -1,13 +1,15 @@
+<%@ taglib prefix="esc" uri="/WEB-INF/functions.tld" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<jsp:include page="../WEB-INF/ui/head.jsp" />
     <meta charset="UTF-8">
     <title>Add Train</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
 </head>
-<body>
-    <jsp:include page="../navbar.jsp" />
+<body class="admin-page">
+    <jsp:include page="../navbar.jsp" /><span id="main-content" tabindex="-1"></span>
     
     <div class="container mt-4">
         <div class="card">
@@ -16,14 +18,15 @@
             </div>
             <div class="card-body">
                 <% if (request.getAttribute("error") != null) { %>
-                    <div class="alert alert-danger">${error}</div>
+                    <div class="alert alert-danger">${esc:html(error)}</div>
                 <% } %>
                 
                 <% if (request.getAttribute("success") != null) { %>
-                    <div class="alert alert-success">${success}</div>
+                    <div class="alert alert-success">${esc:html(success)}</div>
                 <% } %>
                 
-                <form action="${pageContext.request.contextPath}/admin/train" method="post">
+                <form action="${esc:html(pageContext.request.contextPath)}/admin/train" method="post">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                     <div class="mb-3">
                         <label for="trainNumber" class="form-label">Train Number</label>
                         <input type="text" class="form-control" id="trainNumber" name="trainNumber" required>
@@ -37,12 +40,12 @@
                         <input type="number" class="form-control" id="totalSeats" name="totalSeats" required min="1">
                     </div>
                     <button type="submit" class="btn btn-primary">Add Train</button>
-                    <a href="${pageContext.request.contextPath}/admin/manageTrains.jsp" class="btn btn-secondary">Cancel</a>
+                    <a href="${esc:html(pageContext.request.contextPath)}/admin/manageTrains.jsp" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+    
+<jsp:include page="../WEB-INF/ui/footer.jsp" /></body>
 </html>

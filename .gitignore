@@ -1,0 +1,7 @@
+/target/
+/.local/
+/bin/
+/build/
+/local.properties
+/.env
+*.log

@@ -1,105 +1,27 @@
+<%@ taglib prefix="esc" uri="/WEB-INF/functions.tld" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.util.List, com.trainticket.model.Train" %>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<jsp:include page="../WEB-INF/ui/head.jsp" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Trains | TrackEase Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --accent-color: #4895ef;
-            --dark-color: #212529;
-            --light-bg: #f8f9fa;
-        }
-        
-        body {
-            background-color: var(--light-bg);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .admin-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 1.5rem 0;
-            margin-bottom: 2rem;
-            border-radius: 0 0 15px 15px;
-        }
-        
-        .card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-        }
-        
-        .card:hover {
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .table-responsive {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .table {
-            margin-bottom: 0;
-        }
-        
-        .table thead th {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-        }
-        
-        .table tbody tr {
-            transition: all 0.2s ease;
-        }
-        
-        .table tbody tr:hover {
-            background-color: rgba(67, 97, 238, 0.05);
-        }
-        
-        .badge-station {
-            background-color: var(--accent-color);
-            color: white;
-        }
-        
-        .action-btn {
-            padding: 0.35rem 0.75rem;
-            font-size: 0.85rem;
-            border-radius: 6px;
-        }
-        
-        .modal-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: 10px 10px 0 0 !important;
-        }
-        
-        .modal-title {
-            font-weight: 600;
-        }
-        
-        .btn-close-white {
-            filter: invert(1);
-        }
-    </style>
+    
+    
+    
 </head>
-<body>
-    <jsp:include page="../navbar.jsp" />
+<body class="admin-page">
+    <jsp:include page="../navbar.jsp" /><span id="main-content" tabindex="-1"></span>
     
     <div class="admin-header">
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-8">
                     <h1>Manage Trains</h1>
-                    <p class="mb-0">Add, edit or remove Train information</p>
+                    <p class="mb-0">Manage your fleet, seating capacity, and active train records.</p>
                 </div>
                 <div class="col-md-4 text-end">
                     <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addTrainModal">
@@ -113,22 +35,22 @@
     <div class="container mb-5">
         <% if (request.getAttribute("success") != null) { %>
             <div class="alert alert-success alert-dismissible fade show">
-                <i class="fas fa-check-circle me-2"></i>${success}
+                <i class="fas fa-check-circle me-2"></i>${esc:html(success)}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <% } %>
         
         <% if (request.getAttribute("error") != null) { %>
             <div class="alert alert-danger alert-dismissible fade show">
-                <i class="fas fa-exclamation-circle me-2"></i>${error}
+                <i class="fas fa-exclamation-circle me-2"></i>${esc:html(error)}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <script>
-                $(document).ready(function() {
+                document.addEventListener('DOMContentLoaded', function() {
                     <% if (request.getParameter("trainId") == null) { %>
-                        $('#addTrainModal').modal('show');
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('addTrainModal')).show();
                     <% } else { %>
-                        $('#editTrainModal').modal('show');
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('editTrainModal')).show();
                     <% } %>
                 });
             </script>
@@ -154,26 +76,27 @@
                                     for (Train train : trains) {
                             %>
                             <tr>
-                                <td><%= train.getTrainId() %></td>
-                                <td><span class="badge badge-station"><%= train.getTrainNumber() %></span></td>
-                                <td><%= train.getTrainName() %></td>
-                                <td><%= train.getTotalSeats() %></td>
+                                <td><%= com.trainticket.util.Html.escape(train.getTrainId()) %></td>
+                                <td><span class="badge badge-station"><%= com.trainticket.util.Html.escape(train.getTrainNumber()) %></span></td>
+                                <td><%= com.trainticket.util.Html.escape(train.getTrainName()) %></td>
+                                <td><%= com.trainticket.util.Html.escape(train.getTotalSeats()) %></td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-warning action-btn" 
                                         onclick="showEditModal(
-                                            '<%= train.getTrainId() %>',
-                                            '<%= train.getTrainNumber() %>',
-                                            '<%= train.getTrainName() %>',
-                                            '<%= train.getTotalSeats() %>'
+                                            '<%= com.trainticket.util.Html.escape(train.getTrainId()) %>',
+                                            '<%= com.trainticket.util.Html.escape(train.getTrainNumber()) %>',
+                                            '<%= com.trainticket.util.Html.escape(train.getTrainName()) %>',
+                                            '<%= com.trainticket.util.Html.escape(train.getTotalSeats()) %>'
                                         )">
                                         <i class="fas fa-edit me-1"></i>Edit
                                     </button>
                                     <form action="train" method="post" style="display: inline;">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                                         <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="trainId" value="<%= train.getTrainId() %>">
+                                        <input type="hidden" name="trainId" value="<%= com.trainticket.util.Html.escape(train.getTrainId()) %>">
                                         <button type="submit" class="btn btn-sm btn-danger action-btn" 
-                                            onclick="return confirm('Are you sure you want to delete this train?')">
-                                            <i class="fas fa-trash-alt me-1"></i>Delete
+                                            onclick="return confirm('Archive this train? Existing tickets will be preserved.')">
+                                            <i class="fas fa-box-archive me-1"></i>Archive
                                         </button>
                                     </form>
                                 </td>
@@ -208,21 +131,22 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="train" method="post">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="trainNumber" class="form-label">Train Number</label>
                             <input type="text" class="form-control" id="trainNumber" name="trainNumber" 
-                                   value="${empty param.trainNumber ? trainNumber : param.trainNumber}" required>
+                                   value="${esc:html(empty param.trainNumber ? trainNumber : param.trainNumber)}" required>
                         </div>
                         <div class="mb-3">
                             <label for="trainName" class="form-label">Train Name</label>
                             <input type="text" class="form-control" id="trainName" name="trainName" 
-                                   value="${empty param.trainName ? trainName : param.trainName}" required>
+                                   value="${esc:html(empty param.trainName ? trainName : param.trainName)}" required>
                         </div>
                         <div class="mb-3">
                             <label for="totalSeats" class="form-label">Total Seats</label>
                             <input type="number" class="form-control" id="totalSeats" name="totalSeats" 
-                                   value="${empty param.totalSeats ? totalSeats : param.totalSeats}" required>
+                                   value="${esc:html(empty param.totalSeats ? totalSeats : param.totalSeats)}" required>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -243,23 +167,24 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="train" method="post">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                     <input type="hidden" name="action" value="edit">
-                    <input type="hidden" name="trainId" value="${param.trainId}">
+                    <input type="hidden" name="trainId" value="${esc:html(param.trainId)}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Train Number</label>
                             <input type="text" class="form-control" name="trainNumber" 
-                                   value="${empty param.trainNumber ? trainNumber : param.trainNumber}" required>
+                                   value="${esc:html(empty param.trainNumber ? trainNumber : param.trainNumber)}" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Train Name</label>
                             <input type="text" class="form-control" name="trainName" 
-                                   value="${empty param.trainName ? trainName : param.trainName}" required>
+                                   value="${esc:html(empty param.trainName ? trainName : param.trainName)}" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Total Seats</label>
                             <input type="number" class="form-control" name="totalSeats" 
-                                   value="${empty param.totalSeats ? totalSeats : param.totalSeats}" required>
+                                   value="${esc:html(empty param.totalSeats ? totalSeats : param.totalSeats)}" required>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -271,8 +196,8 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script src="${esc:html(pageContext.request.contextPath)}/assets/vendor/jquery.min.js"></script>
     <script>
         function showEditModal(id, number, name, seats) {
             $('input[name="trainId"]').val(id);
@@ -282,5 +207,5 @@
             new bootstrap.Modal(document.getElementById('editTrainModal')).show();
         }
     </script>
-</body>
+<jsp:include page="../WEB-INF/ui/footer.jsp" /></body>
 </html>

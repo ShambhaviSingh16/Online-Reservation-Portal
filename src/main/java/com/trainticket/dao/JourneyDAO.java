@@ -20,7 +20,7 @@ public class JourneyDAO {
         
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
+            validate(journey,conn);
             stmt.setInt(1, journey.getTrainId());
             stmt.setInt(2, journey.getDepartureStationId());
             stmt.setInt(3, journey.getArrivalStationId());
@@ -50,26 +50,51 @@ public class JourneyDAO {
         }
     }
     
-    public boolean updateJourney(Journey journey) throws SQLException {
-        String sql = "UPDATE journeys SET train_id=?, departure_station_id=?, arrival_station_id=?, " +
-                     "departure_time=?, arrival_time=?, fare=?, available_seats=? WHERE journey_id=?";
-        
-        try (Connection conn = DBUtil.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            stmt.setInt(1, journey.getTrainId());
-            stmt.setInt(2, journey.getDepartureStationId());
-            stmt.setInt(3, journey.getArrivalStationId());
-            stmt.setTimestamp(4, journey.getDepartureTime());
-            stmt.setTimestamp(5, journey.getArrivalTime());
-            stmt.setDouble(6, journey.getFare());
-            stmt.setInt(7, journey.getAvailableSeats());
-            stmt.setInt(8, journey.getJourneyId());
-            
-            return stmt.executeUpdate() > 0;
+    private void validate(Journey journey,Connection conn) throws SQLException {
+        if(journey.getDepartureStationId()==journey.getArrivalStationId() || journey.getDepartureTime()==null
+                || journey.getArrivalTime()==null || !journey.getArrivalTime().after(journey.getDepartureTime())
+                || !Double.isFinite(journey.getFare()) || journey.getFare()<=0 || journey.getAvailableSeats()<0) {
+            throw new SQLException("Invalid journey times, stations, fare or capacity","22023");
+        }
+        try(PreparedStatement stmt=conn.prepareStatement("SELECT total_seats FROM trains WHERE train_id=? AND is_active")) {
+            stmt.setInt(1,journey.getTrainId());
+            try(ResultSet rs=stmt.executeQuery()) {
+                if(!rs.next() || journey.getAvailableSeats()>rs.getInt(1)) { throw new SQLException("Journey capacity exceeds active train capacity","22023"); }
+            }
         }
     }
-    
+    public boolean updateJourney(Journey journey) throws SQLException {
+        try(Connection conn=DBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                try(PreparedStatement stmt=conn.prepareStatement("SELECT * FROM journeys WHERE journey_id=? FOR UPDATE")) {
+                    stmt.setInt(1,journey.getJourneyId());
+                    try(ResultSet rs=stmt.executeQuery()) {
+                        if(!rs.next()) { conn.rollback(); return false; }
+                        boolean structural=rs.getInt("train_id")!=journey.getTrainId()
+                            || rs.getInt("departure_station_id")!=journey.getDepartureStationId()
+                            || rs.getInt("arrival_station_id")!=journey.getArrivalStationId()
+                            || rs.getInt("available_seats")!=journey.getAvailableSeats();
+                        if(structural) {
+                            try(PreparedStatement booked=conn.prepareStatement("SELECT 1 FROM tickets WHERE journey_id=? LIMIT 1")) {
+                                booked.setInt(1,journey.getJourneyId());
+                                try(ResultSet found=booked.executeQuery()) {
+                                    if(found.next()) { throw new SQLException("Train, route and capacity cannot change after bookings begin","22023"); }
+                                }
+                            }
+                        }
+                    }
+                }
+                validate(journey,conn);
+                try(PreparedStatement stmt=conn.prepareStatement("UPDATE journeys SET train_id=?,departure_station_id=?,arrival_station_id=?,departure_time=?,arrival_time=?,fare=?,available_seats=? WHERE journey_id=?")) {
+                    stmt.setInt(1,journey.getTrainId()); stmt.setInt(2,journey.getDepartureStationId()); stmt.setInt(3,journey.getArrivalStationId());
+                    stmt.setTimestamp(4,journey.getDepartureTime()); stmt.setTimestamp(5,journey.getArrivalTime()); stmt.setDouble(6,journey.getFare());
+                    stmt.setInt(7,journey.getAvailableSeats()); stmt.setInt(8,journey.getJourneyId()); stmt.executeUpdate();
+                }
+                conn.commit(); return true;
+            } catch(SQLException e) { conn.rollback(); throw e; }
+        }
+    }
     public boolean deleteJourney(int journeyId) throws SQLException {
         String sql = "DELETE FROM journeys WHERE journey_id=?";
         try (Connection conn = DBUtil.getConnection();
@@ -139,7 +164,7 @@ public class JourneyDAO {
                 "JOIN stations ds ON j.departure_station_id = ds.station_id " +
                 "JOIN stations ar ON j.arrival_station_id = ar.station_id " +
                 "WHERE j.departure_station_id = ? AND j.arrival_station_id = ? " +
-                "AND DATE(j.departure_time) = ? AND j.available_seats > 0";
+                "AND DATE(j.departure_time) = ? AND j.departure_time > CURRENT_TIMESTAMP AND t.is_active AND ds.is_active AND ar.is_active";
        
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -236,16 +261,4 @@ public class JourneyDAO {
         return journey;
     }
     
-    public boolean updateAvailableSeats(int journeyId, int seatsBooked) {
-        String sql = "UPDATE journeys SET available_seats = available_seats - ? WHERE journey_id = ?";
-        try (Connection conn = DBUtil.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, seatsBooked);
-            stmt.setInt(2, journeyId); // Only 2 parameters
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
 }

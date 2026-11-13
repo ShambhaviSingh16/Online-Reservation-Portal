@@ -1,19 +1,19 @@
+<%@ taglib prefix="esc" uri="/WEB-INF/functions.tld" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="com.trainticket.model.Train" %>
 <%@ page import="com.trainticket.model.Station" %>
 <%@ page import="java.util.List" %>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<jsp:include page="../WEB-INF/ui/head.jsp" />
     <meta charset="UTF-8">
     <title>Add Journey</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .error-message { color: red; font-size: 0.9rem; }
-    </style>
+    
+    
 </head>
-<body>
-    <jsp:include page="../navbar.jsp" />
+<body class="admin-page">
+    <jsp:include page="../navbar.jsp" /><span id="main-content" tabindex="-1"></span>
     
     <div class="container mt-4">
         <div class="card">
@@ -22,14 +22,15 @@
             </div>
             <div class="card-body">
                 <% if (request.getAttribute("error") != null) { %>
-                    <div class="alert alert-danger">${error}</div>
+                    <div class="alert alert-danger">${esc:html(error)}</div>
                 <% } %>
                 
                 <% if (request.getAttribute("success") != null) { %>
-                    <div class="alert alert-success">${success}</div>
+                    <div class="alert alert-success">${esc:html(success)}</div>
                 <% } %>
                 
-                <form id="journeyForm" action="${pageContext.request.contextPath}/admin/journey" method="post">
+                <form id="journeyForm" action="${esc:html(pageContext.request.contextPath)}/admin/journey" method="post">
+                            <input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}">
                     <div class="mb-3">
                         <label for="trainId" class="form-label">Train</label>
                         <select class="form-select" id="trainId" name="trainId" required>
@@ -39,7 +40,7 @@
                                 if (trains != null) {
                                     for (Train train : trains) {
                             %>
-                            <option value="<%= train.getTrainId() %>"><%= train.getTrainNumber() %> - <%= train.getTrainName() %></option>
+                            <option value="<%= com.trainticket.util.Html.escape(train.getTrainId()) %>"><%= com.trainticket.util.Html.escape(train.getTrainNumber()) %> - <%= com.trainticket.util.Html.escape(train.getTrainName()) %></option>
                             <% 
                                     }
                                 }
@@ -57,7 +58,7 @@
                                     if (stations != null) {
                                         for (Station station : stations) {
                                 %>
-                                <option value="<%= station.getStationId() %>"><%= station.getStationCode() %> - <%= station.getStationName() %></option>
+                                <option value="<%= com.trainticket.util.Html.escape(station.getStationId()) %>"><%= com.trainticket.util.Html.escape(station.getStationCode()) %> - <%= com.trainticket.util.Html.escape(station.getStationName()) %></option>
                                 <% 
                                         }
                                     }
@@ -72,7 +73,7 @@
                                     if (stations != null) {
                                         for (Station station : stations) {
                                 %>
-                                <option value="<%= station.getStationId() %>"><%= station.getStationCode() %> - <%= station.getStationName() %></option>
+                                <option value="<%= com.trainticket.util.Html.escape(station.getStationId()) %>"><%= com.trainticket.util.Html.escape(station.getStationCode()) %> - <%= com.trainticket.util.Html.escape(station.getStationName()) %></option>
                                 <% 
                                         }
                                     }
@@ -105,13 +106,13 @@
                     </div>
                     
                     <button type="submit" class="btn btn-primary">Add Journey</button>
-                    <a href="${pageContext.request.contextPath}/admin/manageJourneys.jsp" class="btn btn-secondary">Cancel</a>
+                    <a href="${esc:html(pageContext.request.contextPath)}/admin/manageJourneys.jsp" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Set minimum datetime to current time
@@ -157,5 +158,5 @@
             });
         });
     </script>
-</body>
+<jsp:include page="../WEB-INF/ui/footer.jsp" /></body>
 </html>

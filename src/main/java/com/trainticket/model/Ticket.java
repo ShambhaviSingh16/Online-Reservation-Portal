@@ -3,6 +3,15 @@ package com.trainticket.model;
 import java.sql.Timestamp;
 
 public class Ticket {
+    private String bookingGroupId;
+    private String passengerName;
+    public String getBookingGroupId() { return bookingGroupId; }
+    public void setBookingGroupId(String value) { bookingGroupId=value; }
+    public String getPassengerName() { return passengerName; }
+    public void setPassengerName(String value) { passengerName=value; }
+    private int waitingPosition;
+    public int getWaitingPosition() { return waitingPosition; }
+    public void setWaitingPosition(int value) { waitingPosition=value; }
     private int ticketId;
     private int journeyId;
     private int userId;

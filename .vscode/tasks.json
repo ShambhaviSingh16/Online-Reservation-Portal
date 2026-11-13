@@ -1,0 +1,8 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {"label":"TrackEase: build WAR","type":"shell","command":"mvn.cmd","args":["package"],"group":{"kind":"build","isDefault":true},"problemMatcher":[]},
+    {"label":"TrackEase: run locally","type":"shell","command":"powershell.exe","args":["-NoProfile","-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/start-local.ps1"],"problemMatcher":[]},
+    {"label":"TrackEase: stop locally","type":"shell","command":"powershell.exe","args":["-NoProfile","-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/stop-local.ps1"],"problemMatcher":[]}
+  ]
+}

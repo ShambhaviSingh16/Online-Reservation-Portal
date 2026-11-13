@@ -25,6 +25,7 @@ public class User {
     public void setUserId(int userId) { this.userId = userId; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
     public String getEmail() { return email; }

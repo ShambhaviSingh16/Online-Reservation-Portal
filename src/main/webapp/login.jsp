@@ -1,49 +1,5 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Train Reservation System - Login</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <h3 class="card-title text-center mb-4">Train Reservation System</h3>
-                        <h5 class="card-subtitle text-center mb-4 text-muted">Login</h5>
-                        
-                        <% if (request.getAttribute("error") != null) { %>
-                            <div class="alert alert-danger">${error}</div>
-                        <% } %>
-                        
-                        <% if (request.getAttribute("success") != null) { %>
-                            <div class="alert alert-success">${success}</div>
-                        <% } %>
-                        
-                        <form action="login" method="post">
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="username" name="username" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
-                            </div>
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary">Login</button>
-                            </div>
-                        </form>
-                        
-                        <div class="mt-3 text-center">
-                            <p>Don't have an account? <a href="register.jsp">Register here</a></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+<%@ taglib prefix="esc" uri="/WEB-INF/functions.tld" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Login | TrackEase</title><jsp:include page="WEB-INF/ui/head.jsp" /></head><body>
+<jsp:include page="navbar.jsp" /><main id="main-content" class="auth-layout"><aside class="auth-story"><span class="eyebrow">Every great trip starts somewhere</span><h2>Good to have<br>you on board.</h2><p>A quieter kind of booking experience. Your trains, your tickets, and the next place you want to be.</p><img src="${esc:html(pageContext.request.contextPath)}/assets/images/rail-landscape.svg" alt="Train travelling through a mountain landscape"></aside><section class="auth-form-wrap"><div class="auth-form"><span class="eyebrow">Your journey continues</span><h1>Welcome back.</h1><p>Login to plan your next trip and pick up where you left off.</p><% if(request.getAttribute("error")!=null) { %><div class="alert alert-danger" role="alert">${esc:html(error)}</div><% } %><% if(request.getAttribute("success")!=null) { %><div class="alert alert-info" role="status">${esc:html(success)}</div><% } %><form action="${esc:html(pageContext.request.contextPath)}/login" method="post"><input type="hidden" name="csrfToken" value="${esc:html(sessionScope.csrfToken)}"><div class="field"><label for="username">Username</label><input class="form-control" id="username" name="username" autocomplete="username" placeholder="Enter your username" required></div><div class="field"><label for="password">Password</label><div class="password-field"><input class="form-control" type="password" id="password" name="password" autocomplete="current-password"  placeholder="Enter your password" required><button type="button" data-password-toggle="password" aria-pressed="false" aria-label="Show or hide password">Show</button></div></div><button class="button w-100" type="submit">Login <i class="fas fa-arrow-right" aria-hidden="true"></i></button></form><div class="auth-switch">New to TrackEase? <a href="${esc:html(pageContext.request.contextPath)}/register.jsp">Create an account</a></div><p class="auth-note"><i class="fas fa-shield-halved" aria-hidden="true"></i> Your account, your journeys. Passwords are securely protected.</p></div></section></main>
+<jsp:include page="WEB-INF/ui/footer.jsp" /></body></html>

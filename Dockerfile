@@ -1,11 +1,13 @@
-FROM tomcat:9.0-jdk17
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml ./
+COPY src ./src
+RUN mvn -B -DskipTests package
 
-# Remove default Tomcat apps
-RUN rm -rf /usr/local/tomcat/webapps/*
-
-# Copy your WAR file
-COPY TrackEasee.war /usr/local/tomcat/webapps/ROOT.war
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /app/target/TrackEase.war /app/TrackEase.war
 
 EXPOSE 8080
 
-CMD ["catalina.sh", "run"]
+CMD ["java", "-jar", "/app/TrackEase.war", "--debug=false"]

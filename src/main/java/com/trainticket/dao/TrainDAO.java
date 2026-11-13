@@ -8,6 +8,7 @@ import java.util.List;
 
 public class TrainDAO {
 	public boolean addTrain(Train train, int adminId) throws SQLException {
+        if(train.getTotalSeats()<1 || train.getTotalSeats()>2000) { throw new SQLException("Train capacity must be 1-2000","22023"); }
         // First check if train number exists
         if (isTrainNumberExists(train.getTrainNumber())) {
             return false;
@@ -39,6 +40,7 @@ public class TrainDAO {
     }
     
     public boolean updateTrain(Train train) throws SQLException {
+        if(train.getTotalSeats()<1 || train.getTotalSeats()>2000) { throw new SQLException("Train capacity must be 1-2000","22023"); }
         String sql = "UPDATE trains SET train_number=?, train_name=?, total_seats=? WHERE train_id=?";
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -53,7 +55,7 @@ public class TrainDAO {
     }
     
     public boolean deleteTrain(int trainId) throws SQLException {
-        String sql = "DELETE FROM trains WHERE train_id=?";
+        String sql = "UPDATE trains SET is_active=FALSE WHERE train_id=? AND is_active";
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
@@ -64,7 +66,7 @@ public class TrainDAO {
     
     public List<Train> getAllTrains() {
         List<Train> trains = new ArrayList<>();
-        String sql = "SELECT * FROM trains";
+        String sql = "SELECT * FROM trains WHERE is_active";
         
         try (Connection conn = DBUtil.getConnection();
              Statement stmt = conn.createStatement();
@@ -86,7 +88,7 @@ public class TrainDAO {
     
     public Train getTrainById(int trainId) {
         Train train = null;
-        String sql = "SELECT * FROM trains WHERE train_id = ?";
+        String sql = "SELECT * FROM trains WHERE train_id = ? AND is_active";
         
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
