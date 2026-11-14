@@ -42,12 +42,13 @@ public class TicketDAO {
                 boolean departed,active;
                 java.math.BigDecimal fare;
                 try (PreparedStatement stmt=conn.prepareStatement(
-                        "SELECT j.departure_time<=CURRENT_TIMESTAMP AS departed,j.fare,(tr.is_active AND ds.is_active AND ar.is_active) AS active "
+                        "SELECT j.advanced_reservations,j.departure_time<=CURRENT_TIMESTAMP AS departed,j.fare,(tr.is_active AND ds.is_active AND ar.is_active) AS active "
                         + "FROM journeys j JOIN trains tr ON tr.train_id=j.train_id JOIN stations ds ON ds.station_id=j.departure_station_id "
                         + "JOIN stations ar ON ar.station_id=j.arrival_station_id WHERE j.journey_id=? FOR UPDATE OF j")) {
                     stmt.setInt(1,journey);
                     try (ResultSet rs=stmt.executeQuery()) {
                         if (!rs.next()) { conn.rollback(); return new GroupBooking(GroupResult.UNAVAILABLE,List.of()); }
+                        if(rs.getBoolean("advanced_reservations")){conn.rollback();return new GroupBooking(GroupResult.UNAVAILABLE,List.of());}
                         departed=rs.getBoolean("departed");active=rs.getBoolean("active");fare=rs.getBigDecimal("fare");
                     }
                 }
@@ -131,12 +132,13 @@ public class TicketDAO {
                 boolean active;
                 java.math.BigDecimal fare;
                 try (PreparedStatement stmt = conn.prepareStatement(
-                        "SELECT j.departure_time<=CURRENT_TIMESTAMP AS departed,j.fare,(tr.is_active AND ds.is_active AND ar.is_active) AS active "
+                        "SELECT j.advanced_reservations,j.departure_time<=CURRENT_TIMESTAMP AS departed,j.fare,(tr.is_active AND ds.is_active AND ar.is_active) AS active "
                         + "FROM journeys j JOIN trains tr ON tr.train_id=j.train_id JOIN stations ds ON ds.station_id=j.departure_station_id "
                         + "JOIN stations ar ON ar.station_id=j.arrival_station_id WHERE j.journey_id=? FOR UPDATE OF j")) {
                     stmt.setInt(1,ticket.getJourneyId());
                     try (ResultSet rs=stmt.executeQuery()) {
                         if (!rs.next()) { conn.rollback(); return BookingResult.UNAVAILABLE; }
+                        if(rs.getBoolean("advanced_reservations")){conn.rollback();return BookingResult.UNAVAILABLE;}
                         departed=rs.getBoolean("departed"); active=rs.getBoolean("active"); fare=rs.getBigDecimal("fare");
                     }
                 }
@@ -231,9 +233,10 @@ public class TicketDAO {
             conn.setAutoCommit(false);
             try {
                 int journey;
-                try (PreparedStatement stmt=conn.prepareStatement("SELECT journey_id FROM tickets WHERE ticket_id=? AND user_id=?")) {
+                try (PreparedStatement stmt=conn.prepareStatement("SELECT journey_id,advanced FROM tickets WHERE ticket_id=? AND user_id=?")) {
                     stmt.setInt(1,id); stmt.setInt(2,user);
-                    try (ResultSet rs=stmt.executeQuery()) { if (!rs.next()) { conn.rollback(); return CancellationResult.NOT_FOUND; } journey=rs.getInt(1); }
+                    try (ResultSet rs=stmt.executeQuery()) { if (!rs.next()) { conn.rollback(); return CancellationResult.NOT_FOUND; }
+                        if(rs.getBoolean("advanced")){conn.rollback();return new AdvancedReservationDAO().cancel(user,id);}journey=rs.getInt(1); }
                 }
                 boolean departed;
                 try (PreparedStatement stmt=conn.prepareStatement("SELECT departure_time<=CURRENT_TIMESTAMP FROM journeys WHERE journey_id=? FOR UPDATE")) {
@@ -263,42 +266,42 @@ public class TicketDAO {
             return CancellationResult.FAILED;
         }
     }
-    	// For getTicketsByUser()
-    	public List<Ticket> getTicketsByUser(int userId) {
+        // For getTicketsByUser()
+        public List<Ticket> getTicketsByUser(int userId) {
             return getTicketsByUser(userId,null);
         }
         private List<Ticket> getTicketsByUser(int userId,String groupId) {
-    	    List<Ticket> tickets = new ArrayList<>();
-    	    String sql = "SELECT t.*, (SELECT COUNT(*) FROM tickets w WHERE w.journey_id=t.journey_id AND w.status='WAITLISTED' AND w.ticket_id<=t.ticket_id) AS waiting_position, j.departure_time, j.arrival_time, COALESCE(t.booked_fare,j.fare) AS fare, " +
-    	                "tr.train_number, tr.train_name, " +
-    	                "ds.station_code AS dep_code, ds.station_name AS dep_name, " +
-    	                "ar.station_code AS arr_code, ar.station_name AS arr_name, " +
-    	                "u.username, u.full_name " + // Added user columns
-    	                "FROM tickets t " +
-    	                "JOIN journeys j ON t.journey_id = j.journey_id " +
-    	                "JOIN trains tr ON j.train_id = tr.train_id " +
-    	                "JOIN stations ds ON j.departure_station_id = ds.station_id " +
-    	                "JOIN stations ar ON j.arrival_station_id = ar.station_id " +
-    	                "JOIN users u ON t.user_id = u.user_id " + // Added users join
-    	                "WHERE t.user_id = ? AND (?::uuid IS NULL OR t.booking_group_id=?::uuid)";
-    	    
-    	    try (Connection conn = DBUtil.getConnection();
-    	         PreparedStatement stmt = conn.prepareStatement(sql)) {
-    	        
-    	        stmt.setInt(1, userId);
+            List<Ticket> tickets = new ArrayList<>();
+            String sql = "SELECT t.*, (SELECT COUNT(*) FROM tickets w WHERE w.journey_id=t.journey_id AND w.status='WAITLISTED' AND w.ticket_id<=t.ticket_id) AS waiting_position, j.departure_time, j.arrival_time, COALESCE(t.booked_fare,j.fare) AS fare, " +
+                        "tr.train_number, tr.train_name, " +
+                        "ds.station_code AS dep_code, ds.station_name AS dep_name, " +
+                        "ar.station_code AS arr_code, ar.station_name AS arr_name, " +
+                        "u.username, u.full_name " + // Added user columns
+                        "FROM tickets t " +
+                        "JOIN journeys j ON t.journey_id = j.journey_id " +
+                        "JOIN trains tr ON j.train_id = tr.train_id " +
+                        "JOIN stations ds ON j.departure_station_id = ds.station_id " +
+                        "JOIN stations ar ON j.arrival_station_id = ar.station_id " +
+                        "JOIN users u ON t.user_id = u.user_id " + // Added users join
+                        "WHERE t.user_id = ? AND (?::uuid IS NULL OR t.booking_group_id=?::uuid)";
+
+            try (Connection conn = DBUtil.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                stmt.setInt(1, userId);
                 stmt.setString(2,groupId);stmt.setString(3,groupId);
-    	        ResultSet rs = stmt.executeQuery();
-    	        
-    	        while (rs.next()) {
-    	            Ticket ticket = extractTicketFromResultSet(rs);
-    	            tickets.add(ticket);
-    	        }
-    	    } catch (SQLException e) {
-    	        e.printStackTrace();
-    	    }
-    	    return tickets;
-    	}
-    
+                ResultSet rs = stmt.executeQuery();
+
+                while (rs.next()) {
+                    Ticket ticket = extractTicketFromResultSet(rs);
+                    tickets.add(ticket);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return tickets;
+        }
+
     public Ticket getTicketById(int ticketId) {
         Ticket ticket = null;
         String sql = "SELECT t.*, (SELECT COUNT(*) FROM tickets w WHERE w.journey_id=t.journey_id AND w.status='WAITLISTED' AND w.ticket_id<=t.ticket_id) AS waiting_position, j.departure_time, j.arrival_time, COALESCE(t.booked_fare,j.fare) AS fare, " +
@@ -313,10 +316,10 @@ public class TicketDAO {
                      "JOIN stations ar ON j.arrival_station_id = ar.station_id " +
                      "JOIN users u ON t.user_id = u.user_id " +
                      "WHERE t.ticket_id = ?";
-        
+
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
+
             stmt.setInt(1, ticketId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -328,7 +331,7 @@ public class TicketDAO {
         }
         return ticket;
     }
-    
+
     // For getAllTickets()
     public List<Ticket> getAllTickets() {
         List<Ticket> tickets = new ArrayList<>();
@@ -343,11 +346,11 @@ public class TicketDAO {
                 "JOIN stations ds ON j.departure_station_id = ds.station_id " +
                 "JOIN stations ar ON j.arrival_station_id = ar.station_id " + // Fixed here
                 "JOIN users u ON t.user_id = u.user_id";
-        
+
         try (Connection conn = DBUtil.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-            
+
             while (rs.next()) {
                 Ticket ticket = extractTicketFromResultSet(rs);
                 tickets.add(ticket);
@@ -366,39 +369,48 @@ public class TicketDAO {
         ticket.setSeatNumber(rs.getString("seat_number"));
         ticket.setCoachNumber(rs.getString("coach_number"));
         ticket.setStatus(rs.getString("status"));
+        ticket.setAdvanced(rs.getBoolean("advanced"));
+        ticket.setTravelClass(rs.getString("travel_class"));
+        ticket.setBerthPreference(rs.getString("berth_preference"));
+        ticket.setSegmentStart(rs.getInt("segment_start"));ticket.setSegmentEnd(rs.getInt("segment_end"));
         ticket.setPassengerName(rs.getString("passenger_name"));
         ticket.setBookingGroupId(rs.getString("booking_group_id"));
         ticket.setWaitingPosition("WAITLISTED".equals(ticket.getStatus())?rs.getInt("waiting_position"):0);
-        
+
         Journey journey = new Journey();
         journey.setJourneyId(rs.getInt("journey_id"));
         journey.setDepartureTime(rs.getTimestamp("departure_time"));
         journey.setArrivalTime(rs.getTimestamp("arrival_time"));
         journey.setFare(rs.getDouble("fare"));
-        
+
         Train train = new Train();
         train.setTrainNumber(rs.getString("train_number"));
         train.setTrainName(rs.getString("train_name"));
         journey.setTrain(train);
-        
+
         Station depStation = new Station();
         depStation.setStationCode(rs.getString("dep_code"));
         depStation.setStationName(rs.getString("dep_name"));
         journey.setDepartureStation(depStation);
-        
+
         Station arrStation = new Station();
         arrStation.setStationCode(rs.getString("arr_code"));
         arrStation.setStationName(rs.getString("arr_name"));
         journey.setArrivalStation(arrStation);
-        
+        if(ticket.isAdvanced()) {
+            depStation.setStationName(rs.getString("segment_departure_name"));depStation.setStationCode(rs.getString("segment_departure_code"));
+            arrStation.setStationName(rs.getString("segment_arrival_name"));arrStation.setStationCode(rs.getString("segment_arrival_code"));
+            journey.setDepartureTime(rs.getTimestamp("segment_departure_time"));journey.setArrivalTime(rs.getTimestamp("segment_arrival_time"));
+        }
+
         ticket.setJourney(journey);
-        
+
         User user = new User();
         user.setUserId(rs.getInt("user_id"));
         user.setUsername(rs.getString("username")); // Now available from SQL
         user.setFullName(rs.getString("full_name"));
         ticket.setUser(user);
-        
+
         return ticket;
     }
 }

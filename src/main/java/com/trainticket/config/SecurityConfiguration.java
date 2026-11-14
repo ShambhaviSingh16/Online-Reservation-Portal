@@ -23,6 +23,7 @@ public class SecurityConfiguration {
                 .dispatcherTypeMatchers(DispatcherType.FORWARD,DispatcherType.ERROR).permitAll()
                 .requestMatchers("/admin/**","/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/user/**","/api/bookings/**","/api/journeys/**").authenticated()
+                .requestMatchers("/api/account/**").authenticated()
                 .anyRequest().permitAll())
             .exceptionHandling(errors -> errors
                 .authenticationEntryPoint((req,res,e) -> {
@@ -36,6 +37,13 @@ public class SecurityConfiguration {
                         throws ServletException,IOException {
                     HttpSession session=req.getSession(false);
                     User user=session==null?null:(User)session.getAttribute("user");
+                    if(user!=null) {
+                        try {
+                            if(new com.trainticket.dao.RecoveryDAO().version(user.getUserId())!=user.getCredentialVersion()) {
+                                session.invalidate();user=null;
+                            }
+                        }catch(java.sql.SQLException e){res.sendError(503,"Account verification unavailable");return;}
+                    }
                     if (user!=null) {
                         String role="admin".equals(user.getRole())?"ROLE_ADMIN":"ROLE_USER";
                         SecurityContextHolder.getContext().setAuthentication(

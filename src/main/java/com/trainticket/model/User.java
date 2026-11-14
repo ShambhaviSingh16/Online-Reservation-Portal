@@ -1,16 +1,20 @@
 package com.trainticket.model;
 
 public class User {
+    private int credentialVersion;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public int getCredentialVersion(){return credentialVersion;}
+    public void setCredentialVersion(int version){credentialVersion=version;}
     private int userId;
     private String username;
     private String password;
     private String email;
     private String fullName;
     private String role;
-    
+
     // Constructors, getters, and setters
     public User() {}
-    
+
     public User(int userId, String username, String password, String email, String fullName, String role) {
         this.userId = userId;
         this.username = username;
@@ -19,7 +23,7 @@ public class User {
         this.fullName = fullName;
         this.role = role;
     }
-    
+
     // Getters and Setters for all properties
     public int getUserId() { return userId; }
     public void setUserId(int userId) { this.userId = userId; }

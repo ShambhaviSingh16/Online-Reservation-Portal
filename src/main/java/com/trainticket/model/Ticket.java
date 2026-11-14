@@ -3,6 +3,19 @@ package com.trainticket.model;
 import java.sql.Timestamp;
 
 public class Ticket {
+    private boolean advanced;
+    private String travelClass="STANDARD",berthPreference="ANY";
+    private int segmentStart,segmentEnd;
+    public boolean isAdvanced(){return advanced;}
+    public void setAdvanced(boolean value){advanced=value;}
+    public String getTravelClass(){return travelClass;}
+    public void setTravelClass(String value){travelClass=value;}
+    public String getBerthPreference(){return berthPreference;}
+    public void setBerthPreference(String value){berthPreference=value;}
+    public int getSegmentStart(){return segmentStart;}
+    public void setSegmentStart(int value){segmentStart=value;}
+    public int getSegmentEnd(){return segmentEnd;}
+    public void setSegmentEnd(int value){segmentEnd=value;}
     private String bookingGroupId;
     private String passengerName;
     public String getBookingGroupId() { return bookingGroupId; }
@@ -21,10 +34,10 @@ public class Ticket {
     private String status;
     private Journey journey;
     private User user;
-    
+
     // Constructors, getters, and setters
     public Ticket() {}
-    
+
     // Getters and Setters for all properties
     public int getTicketId() { return ticketId; }
     public void setTicketId(int ticketId) { this.ticketId = ticketId; }

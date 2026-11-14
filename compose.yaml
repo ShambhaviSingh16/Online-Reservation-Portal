@@ -19,6 +19,16 @@ services:
       DB_URL: jdbc:postgresql://db:5432/trackease
       DB_USER: trackease
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-none}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
     depends_on:
       db:
         condition: service_healthy

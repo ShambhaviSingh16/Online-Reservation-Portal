@@ -12,6 +12,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice(basePackages="com.trainticket.api")
 public class ApiErrors {
+    @ExceptionHandler(com.trainticket.dao.AdvancedReservationDAO.Conflict.class) ResponseEntity<?> reservation(RuntimeException e) {
+        return ResponseEntity.status(409).body(Map.of("error",e.getMessage()));
+    }
     @ExceptionHandler(ResponseStatusException.class) ResponseEntity<?> status(ResponseStatusException e) {
         return ResponseEntity.status(e.getStatusCode()).body(Map.of("error",e.getReason()==null?"Request failed":e.getReason()));
     }

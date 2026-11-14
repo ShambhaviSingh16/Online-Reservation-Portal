@@ -13,11 +13,11 @@ public class JourneyDAO {
         if (isJourneyExists(journey)) {
             return false;
         }
-        
+
         String sql = "INSERT INTO journeys (train_id, departure_station_id, arrival_station_id, " +
                      "departure_time, arrival_time, fare, available_seats) " +
                      "VALUES (?, ?, ?, ?, ?, ?, ?)";
-        
+
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             validate(journey,conn);
@@ -28,28 +28,28 @@ public class JourneyDAO {
             stmt.setTimestamp(5, journey.getArrivalTime());
             stmt.setDouble(6, journey.getFare());
             stmt.setInt(7, journey.getAvailableSeats());
-            
+
             return stmt.executeUpdate() > 0;
         }
     }
-    
+
     private boolean isJourneyExists(Journey journey) throws SQLException {
         String sql = "SELECT 1 FROM journeys WHERE train_id = ? AND departure_station_id = ? " +
                      "AND arrival_station_id = ? AND departure_time = ? LIMIT 1";
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
+
             stmt.setInt(1, journey.getTrainId());
             stmt.setInt(2, journey.getDepartureStationId());
             stmt.setInt(3, journey.getArrivalStationId());
             stmt.setTimestamp(4, journey.getDepartureTime());
-            
+
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next();
             }
         }
     }
-    
+
     private void validate(Journey journey,Connection conn) throws SQLException {
         if(journey.getDepartureStationId()==journey.getArrivalStationId() || journey.getDepartureTime()==null
                 || journey.getArrivalTime()==null || !journey.getArrivalTime().after(journey.getDepartureTime())
@@ -71,6 +71,7 @@ public class JourneyDAO {
                     stmt.setInt(1,journey.getJourneyId());
                     try(ResultSet rs=stmt.executeQuery()) {
                         if(!rs.next()) { conn.rollback(); return false; }
+                        if(rs.getBoolean("advanced_reservations"))throw new SQLException("This journey has a configured route and class plan. Its base schedule is locked.","22023");
                         boolean structural=rs.getInt("train_id")!=journey.getTrainId()
                             || rs.getInt("departure_station_id")!=journey.getDepartureStationId()
                             || rs.getInt("arrival_station_id")!=journey.getArrivalStationId()
@@ -99,12 +100,12 @@ public class JourneyDAO {
         String sql = "DELETE FROM journeys WHERE journey_id=?";
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
+
             stmt.setInt(1, journeyId);
             return stmt.executeUpdate() > 0;
         }
     }
-    
+
     public List<Journey> getAllJourneys() {
         List<Journey> journeys = new ArrayList<>();
         String sql = "SELECT j.*, t.train_number, t.train_name, " +
@@ -114,11 +115,11 @@ public class JourneyDAO {
                 "JOIN trains t ON j.train_id = t.train_id " +
                 "JOIN stations ds ON j.departure_station_id = ds.station_id " +
                 "JOIN stations ar ON j.arrival_station_id = ar.station_id";
-        
+
         try (Connection conn = DBUtil.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-            
+
             while (rs.next()) {
                 Journey journey = new Journey();
                 journey.setJourneyId(rs.getInt("journey_id"));
@@ -129,23 +130,24 @@ public class JourneyDAO {
                 journey.setArrivalTime(rs.getTimestamp("arrival_time"));
                 journey.setFare(rs.getDouble("fare"));
                 journey.setAvailableSeats(rs.getInt("available_seats"));
-                
+                    journey.setAdvancedReservations(rs.getBoolean("advanced_reservations"));
+
                 Train train = new Train();
                 train.setTrainId(rs.getInt("train_id"));
                 train.setTrainNumber(rs.getString("train_number"));
                 train.setTrainName(rs.getString("train_name"));
                 journey.setTrain(train);
-                
+
                 Station depStation = new Station();
                 depStation.setStationCode(rs.getString("dep_code"));
                 depStation.setStationName(rs.getString("dep_name"));
                 journey.setDepartureStation(depStation);
-                
+
                 Station arrStation = new Station();
                 arrStation.setStationCode(rs.getString("arr_code"));
                 arrStation.setStationName(rs.getString("arr_name"));
                 journey.setArrivalStation(arrStation);
-                
+
                 journeys.add(journey);
             }
         } catch (SQLException e) {
@@ -153,7 +155,7 @@ public class JourneyDAO {
         }
         return journeys;
     }
-    
+
     public List<Journey> searchJourneys(int departureStationId, int arrivalStationId, Date travelDate) {
         List<Journey> journeys = new ArrayList<>();
         String sql = "SELECT j.*, t.train_number, t.train_name, " +
@@ -165,14 +167,14 @@ public class JourneyDAO {
                 "JOIN stations ar ON j.arrival_station_id = ar.station_id " +
                 "WHERE j.departure_station_id = ? AND j.arrival_station_id = ? " +
                 "AND DATE(j.departure_time) = ? AND j.departure_time > CURRENT_TIMESTAMP AND t.is_active AND ds.is_active AND ar.is_active";
-       
+
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
+
             stmt.setInt(1, departureStationId);
             stmt.setInt(2, arrivalStationId);
             stmt.setDate(3, travelDate);
-            
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     Journey journey = new Journey();
@@ -184,23 +186,24 @@ public class JourneyDAO {
                     journey.setArrivalTime(rs.getTimestamp("arrival_time"));
                     journey.setFare(rs.getDouble("fare"));
                     journey.setAvailableSeats(rs.getInt("available_seats"));
-                    
+                    journey.setAdvancedReservations(rs.getBoolean("advanced_reservations"));
+
                     Train train = new Train();
                     train.setTrainId(rs.getInt("train_id"));
                     train.setTrainNumber(rs.getString("train_number"));
                     train.setTrainName(rs.getString("train_name"));
                     journey.setTrain(train);
-                    
+
                     Station depStation = new Station();
                     depStation.setStationCode(rs.getString("dep_code"));
                     depStation.setStationName(rs.getString("dep_name"));
                     journey.setDepartureStation(depStation);
-                    
+
                     Station arrStation = new Station();
                     arrStation.setStationCode(rs.getString("arr_code"));
                     arrStation.setStationName(rs.getString("arr_name"));
                     journey.setArrivalStation(arrStation);
-                    
+
                     journeys.add(journey);
                 }
             }
@@ -209,7 +212,7 @@ public class JourneyDAO {
         }
         return journeys;
     }
-    
+
     public Journey getJourneyById(int journeyId) {
         Journey journey = null;
         String sql = "SELECT j.*, t.train_number, t.train_name, " +
@@ -220,12 +223,12 @@ public class JourneyDAO {
                 "JOIN stations ds ON j.departure_station_id = ds.station_id " +
                 "JOIN stations ar ON j.arrival_station_id = ar.station_id " +
                 "WHERE j.journey_id = ?";
-        
+
         try (Connection conn = DBUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
+
             stmt.setInt(1, journeyId);
-            
+
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     journey = new Journey();
@@ -237,18 +240,19 @@ public class JourneyDAO {
                     journey.setArrivalTime(rs.getTimestamp("arrival_time"));
                     journey.setFare(rs.getDouble("fare"));
                     journey.setAvailableSeats(rs.getInt("available_seats"));
-                    
+                    journey.setAdvancedReservations(rs.getBoolean("advanced_reservations"));
+
                     Train train = new Train();
                     train.setTrainId(rs.getInt("train_id"));
                     train.setTrainNumber(rs.getString("train_number"));
                     train.setTrainName(rs.getString("train_name"));
                     journey.setTrain(train);
-                    
+
                     Station depStation = new Station();
                     depStation.setStationCode(rs.getString("dep_code"));
                     depStation.setStationName(rs.getString("dep_name"));
                     journey.setDepartureStation(depStation);
-                    
+
                     Station arrStation = new Station();
                     arrStation.setStationCode(rs.getString("arr_code"));
                     arrStation.setStationName(rs.getString("arr_name"));
@@ -260,5 +264,5 @@ public class JourneyDAO {
         }
         return journey;
     }
-    
+
 }

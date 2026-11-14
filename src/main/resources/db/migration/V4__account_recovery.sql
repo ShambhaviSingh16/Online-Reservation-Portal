@@ -1,0 +1,6 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS credential_version INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS recovery_codes (
+ user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+ code_hash VARCHAR(64) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+ PRIMARY KEY(user_id,code_hash)
+);

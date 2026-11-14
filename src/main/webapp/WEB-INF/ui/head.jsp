@@ -6,3 +6,7 @@
 <link rel="stylesheet" href="${esc:html(pageContext.request.contextPath)}/assets/css/group-booking.css">
 <script defer src="${esc:html(pageContext.request.contextPath)}/assets/vendor/bootstrap.bundle.min.js"></script>
 <script defer src="${esc:html(pageContext.request.contextPath)}/assets/js/app.js"></script>
+
+<meta name="trackease-context" content="${esc:html(pageContext.request.contextPath)}">
+<link rel="stylesheet" href="${esc:html(pageContext.request.contextPath)}/assets/css/features.css">
+<script defer src="${esc:html(pageContext.request.contextPath)}/assets/js/features.js"></script>

@@ -56,6 +56,14 @@ The application is a **single deployable system** with shared reservation logic 
 - Ticket history with confirmed, waitlisted, and cancelled filters.
 - Print-friendly individual tickets and group booking summaries.
 - Responsive desktop/mobile layouts with locally served styles, scripts, and icons.
+- Multi-stop reservations with segment fares and seat reuse between non-overlapping legs.
+- STANDARD, SLEEPER, AC3, and AC2 inventory, best-effort berth preferences, and an interactive seat map.
+- Two-minute selected-seat holds, automatic allocation, and explicitly opted-in RAC shared berths.
+- Downloadable individual/group PDF tickets with ownership checks.
+- Single-use email password-reset links, saved backup recovery codes, and session revocation after recovery.
+- Booking, cancellation, and promotion emails through an optional delivery outbox.
+
+Advanced features require a route and coach plan configured before bookings begin. Existing single-class journeys retain their original booking flow. See [advanced reservations](docs/ADVANCED_RESERVATIONS.md) and [free email setup](docs/EMAIL_SETUP.md).
 
 ### Administrator features
 
@@ -65,6 +73,8 @@ The application is a **single deployable system** with shared reservation logic 
 - View database-backed dashboard totals and recorded confirmed-booking value.
 - Access paginated booking records and ticket audit events through the API.
 - Retrieve 30-day booking counts and journey occupancy data through the analytics API.
+- Configure intermediate stops, class fare multipliers, coaches, and a separate RAC quota.
+- Search and filter trains, stations, journeys, and tickets with server-side pagination.
 
 ## Screenshots
 
@@ -103,6 +113,7 @@ Screenshots below show the working application with seeded **local demonstration
 | Persistence | PostgreSQL, JDBC, HikariCP connection pooling |
 | Schema management | Flyway versioned migrations |
 | API | Spring MVC, Jakarta Bean Validation, OpenAPI / Swagger UI |
+| Documents and notifications | Apache PDFBox, Brevo HTTPS API or local SMTP, transactional notification outbox |
 | Verification | JUnit 5, PostgreSQL integration tests, HTTP smoke scripts, Playwright browser checks |
 | Delivery | Multi-stage Docker build, Docker Compose, GitHub Actions, Render |
 
@@ -142,13 +153,16 @@ The existing servlet/JSP workflows were retained during the Spring Boot migratio
 | Group size | 1–6 named passengers per group submission |
 | Insufficient seats without waiting-list consent | No passenger tickets are committed |
 | Insufficient seats with consent | Some passengers may be confirmed while others are waitlisted |
-| Seat layout | Simplified standard coaches: S1, S2, etc., with up to 80 numbered seats per coach |
+| Seat layout | Simplified coaches with up to 80 seats/berths; advanced journeys use configured classes and berth types |
 | Seats together | Not guaranteed |
 | Waiting-list order | Ticket creation order under the journey lock |
 | Cancellation | Individual tickets, before departure; repeated cancellation cannot release capacity twice |
 | Existing request retry | Returns the original reservation's current state; changing group passengers with the same key is rejected |
 | Time handling | Railway schedule times use Asia/Kolkata |
 | Fare handling | New tickets retain their booked fare; dashboard value is recorded fare, not collected revenue |
+| Selected-seat hold | Two minutes; the server validates ownership and expiry at confirmation |
+| Segment reuse | The same berth can serve non-overlapping route legs; overlapping claims are rejected transactionally |
+| RAC | Separate configured sharing quota, two passengers per RAC berth; older eligible RAC tickets get full berths before waiting-list promotions |
 
 Train capacity should be configured before bookings begin. Route, train, and capacity changes that would rewrite booked journeys are rejected. Legacy manual seat labels remain intact; legacy fares are initialized from their journey fare during migration because an original booked fare was not stored.
 
@@ -272,6 +286,15 @@ Unsafe JSON requests require `X-CSRF-Token`. Login rotates the session; logout i
 | GET | `/api/admin/bookings` | Paginated administrator booking records |
 | GET | `/api/admin/bookings/{id}/events` | Ticket audit events |
 | GET | `/api/admin/analytics` | Summary totals, daily booking counts, and occupancy data |
+| PUT | `/api/admin/journeys/{id}/plan` | Configure stops, classes, and coaches before booking |
+| GET | `/api/journeys/segments`, `/api/journeys/{id}/plan`, `/api/journeys/{id}/seats` | Search segments and inspect class/seat inventory |
+| POST / DELETE | `/api/bookings/holds`, `/api/bookings/holds/{id}` | Hold selected seats or release your hold |
+| POST | `/api/bookings/advanced` | Reserve a segment with class, berth preference, and optional RAC |
+| GET | `/api/bookings/{id}/pdf`, `/api/bookings/group/{id}/pdf` | Download your PDF documents |
+| GET | `/api/admin/catalog` | Filtered, paginated operational records |
+| POST | `/api/account/recovery-codes`, `/api/auth/recover` | Generate saved codes or recover an account |
+| POST | `/api/auth/password-reset/request`, `/api/auth/password-reset/complete` | Request and consume an email reset link |
+| GET | `/api/journeys/provider` | Railway provider configuration status |
 
 ### Example: group reservation
 
@@ -298,12 +321,13 @@ Validation errors return **400**; missing authentication **401**; forbidden acti
 - **CSRF protection:** session-bound tokens for JSP forms and `X-CSRF-Token` validation for unsafe API requests, implemented by the application's shared CSRF filter.
 - **Output and input handling:** escaped JSP output, prepared SQL statements, and server-side API validation.
 - **Configuration:** database credentials come from environment variables or an ignored local file; production startup does not seed default accounts.
+- **Account recovery:** only hashes of reset tokens and backup codes are stored; reset links expire after 30 minutes. Successful recovery invalidates existing sessions and outstanding recovery credentials.
 
 Legacy accounts that have not logged in still require migration or a password reset. Existing duplicate confirmed seat labels require review before applying the unique-seat migration; migrations do not silently delete conflicting bookings.
 
 ## Testing
 
-The latest local verification completed **30 JUnit tests with zero failures, errors, or skips**, including **24 PostgreSQL integration tests**. Test counts describe the verified implementation; workflow status and generated reports provide current build evidence.
+The latest local verification completed **42 JUnit tests with zero failures, errors, or skips**, including **35 PostgreSQL integration tests**. Test counts describe the verified implementation; workflow status and generated reports provide current build evidence.
 
 | Verification layer | Coverage |
 | --- | --- |
@@ -313,6 +337,7 @@ The latest local verification completed **30 JUnit tests with zero failures, err
 | Browser checks | Desktop/mobile layouts, local UI assets with third-party requests blocked, search interactions, booking dialogs, ticket filters, and admin pages |
 | Group browser/API checks | Multiple named passengers, total fare, unique seats, retry safety, validation, ownership, individual cancellation, mobile rendering, and print output |
 | Swagger browser checks | Real Try it out flow: CSRF setup, login, session refresh, authenticated access, and logout |
+| Advanced integration tests | Overlapping-seat contention, segment reuse, atomic holds/groups, hold expiry, class fares, RAC sharing/promotion, recovery-token reuse, notification delivery, and PDF contents |
 
 ```powershell
 # Unit tests; database integration tests are opt-in
@@ -332,6 +357,8 @@ node scripts/smoke-group.cjs
 node scripts/smoke-swagger.cjs
 ```
 
+`scripts/smoke-features.cjs` additionally exercises advanced workflows through the browser and captures real JavaMail traffic in an in-process local SMTP inbox. It requires the test email configuration described in [EMAIL_SETUP.md](docs/EMAIL_SETUP.md); it never sends mail to an external provider.
+
 Integration tests create and remove a **disposable schema** in the local database. They reject remote database URLs and do not truncate demonstration tables. HTTP/browser checks create local test records; retained ticket and audit history is intentional. Surefire reports are written to `target/surefire-reports`; browser screenshots and print artifacts go to `.local/`.
 
 The [GitHub Actions workflow](.github/workflows/ci.yml) builds with Java 17, runs the unit and PostgreSQL integration tests, builds the Docker image, and uploads verification reports. CI builds are separate from Render deployments.
@@ -347,6 +374,10 @@ The [Dockerfile](Dockerfile) builds the executable WAR from source in a Maven st
 | `DB_PASSWORD` | Database password | Set in the hosting provider's secret configuration |
 | `SPRING_PROFILES_ACTIVE` | Production HTTPS/proxy settings | `prod` on Render |
 | `PORT` | HTTP listening port | Supplied by Render; defaults to `8080` locally |
+| `MAIL_PROVIDER` | Optional email transport | `none` by default; `brevo` for Render |
+| `BREVO_API_KEY` | Brevo transactional email credential | Set privately in Render, never in Git |
+| `MAIL_FROM` | Verified sender address | Your verified sender |
+| `PUBLIC_BASE_URL` | Trusted base URL for recovery/ticket links | `https://trackease-njtn.onrender.com` |
 
 Use a PostgreSQL database in the same region as the web service when using Render's internal network. Configure actual database values rather than copying placeholder hostnames. The production profile enables secure session cookies and forwarded-header handling for the HTTPS proxy.
 
@@ -357,6 +388,9 @@ Flyway runs the migrations in [`src/main/resources/db/migration`](src/main/resou
 | V1 | Reservation schema and baseline modernization |
 | V2 | System actor support for automatic waiting-list promotion |
 | V3 | Group-booking references and passenger names |
+| V4 | Backup recovery codes and credential versions |
+| V5 | Classes, route segments, seat holds, and RAC occupancy |
+| V6 | Email reset tokens and transactional notification outbox |
 
 Existing schemas are baselined at version 0. Add a new migration for future changes rather than editing applied versions. `database/schema.sql` also supports portable local provisioning and disposable integration-test schemas.
 
@@ -388,15 +422,13 @@ Existing schemas are baselined at version 0. Add a new migration for future chan
 
 ## Current scope and next steps
 
-The current implementation covers the reservation lifecycle, group booking, authorization, audit events, API documentation, and containerized deployment. The following are **future extensions**, not shipped features:
+The implementation includes advanced segment reservations, class inventory, seat holds, RAC, PDF documents, account recovery, and optional email delivery alongside the original reservation workflow.
 
-- Multiple travel classes, berth preferences, and an interactive seat map.
-- Email notifications and application-generated downloadable PDF tickets.
-- Payment sandbox integration and a separate payment lifecycle.
-- RAC/berth-sharing and route-segment seat reuse.
-- Integration with a real railway timetable or reservation provider.
-
-Browser printing is implemented; a server-side PDF-generation service is not. The system currently allocates seats for a complete journey rather than reusing seats across intermediate route segments.
+- **Live railway data:** an integration interface and configuration-status endpoint are ready. No authorized provider is connected; local timetable data remains administrator-managed.
+- **Email activation:** requires a free provider account, verified sender, and environment credentials. Delivery is disabled by default; see [EMAIL_SETUP.md](docs/EMAIL_SETUP.md). Local delivery tests do not establish external inbox deliverability.
+- **Reservation model:** berth layouts and RAC quotas are simplified portfolio rules, not a reproduction of official railway allocation policy. Preferences and seats together are not guaranteed.
+- **PDF characters:** bundled fonts cover common Latin text; unsupported characters are marked in the document while the original name remains available in the application.
+- **Payments and additional production operations:** outside this implementation's agreed scope. No money is collected.
 
 ## Author
 

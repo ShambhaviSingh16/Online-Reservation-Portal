@@ -3,6 +3,9 @@ package com.trainticket.model;
 import java.sql.Timestamp;
 
 public class Journey {
+    private boolean advancedReservations;
+    public boolean isAdvancedReservations(){return advancedReservations;}
+    public void setAdvancedReservations(boolean value){advancedReservations=value;}
     private int journeyId;
     private int trainId;
     private int departureStationId;
@@ -14,10 +17,10 @@ public class Journey {
     private Train train;
     private Station departureStation;
     private Station arrivalStation;
-    
+
     // Constructors, getters, and setters
     public Journey() {}
-    
+
     // Getters and Setters for all properties
     public int getJourneyId() { return journeyId; }
     public void setJourneyId(int journeyId) { this.journeyId = journeyId; }

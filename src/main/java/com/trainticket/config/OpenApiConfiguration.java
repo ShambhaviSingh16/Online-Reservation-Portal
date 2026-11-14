@@ -30,7 +30,7 @@ public class OpenApiConfiguration {
     @Bean public OpenApiCustomizer sessionAndCsrfRequirements() {
         return api -> api.getPaths().forEach((path,item) -> item.readOperationsMap().forEach((method,operation) -> {
             boolean authenticated=path.startsWith("/api/admin/") || path.startsWith("/api/bookings")
-                || path.startsWith("/api/journeys/") || path.equals("/api/auth/me");
+                || path.startsWith("/api/journeys/") || path.startsWith("/api/account/") || path.equals("/api/auth/me");
             boolean unsafe=switch(method) { case POST,PUT,PATCH,DELETE -> true; default -> false; };
             SecurityRequirement requirement=new SecurityRequirement();
             if(authenticated) { requirement.addList("sessionCookie"); }

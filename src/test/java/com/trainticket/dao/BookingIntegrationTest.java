@@ -39,10 +39,7 @@ class BookingIntegrationTest {
         try (Connection conn = connection(); Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE SCHEMA " + schema);
             conn.setSchema(schema);
-            for (String sql : Files.readString(Path.of("database/schema.sql")).split(";")) {
-                // SQL comments may contain semicolons, so schema.sql keeps statements simple.
-                if (!sql.isBlank()) { stmt.execute(sql); }
-            }
+            stmt.execute(Files.readString(Path.of("database/schema.sql")));
         }
         Properties testSettings = new Properties();
         testSettings.putAll(settings);
@@ -364,6 +361,123 @@ class BookingIntegrationTest {
         assertEquals(TicketDAO.CancellationResult.DEPARTED,dao.cancelTicket(first.getTicketId(),user));
         assertEquals(BookingResult.UNAVAILABLE,dao.reserveTicket(ticket("ignored"),UUID.randomUUID().toString(),true));
         assertEquals(1,scalar("SELECT COUNT(*) FROM tickets"));
+    }
+
+    private AdvancedReservationDAO advanced(int seats,int rac) throws Exception {
+        java.time.LocalDateTime departure,arrival;
+        try(Connection c=connection();Statement s=c.createStatement()) {
+            s.execute("INSERT INTO stations(station_code,station_name) VALUES('C','Middle')");
+            try(ResultSet r=s.executeQuery("SELECT departure_time,arrival_time FROM journeys")){r.next();departure=r.getTimestamp(1).toLocalDateTime();arrival=r.getTimestamp(2).toLocalDateTime();}
+        }
+        var middle=departure.plusHours(12);var dao=new AdvancedReservationDAO();
+        dao.configure(journey,List.of(new AdvancedReservationDAO.Stop(1,departure,departure,java.math.BigDecimal.ZERO),
+            new AdvancedReservationDAO.Stop(3,middle,middle,java.math.BigDecimal.valueOf(40)),new AdvancedReservationDAO.Stop(2,arrival,arrival,java.math.BigDecimal.valueOf(100))),
+            List.of(new AdvancedReservationDAO.Coach("S1",rac>0?"SLEEPER":"STANDARD",seats,java.math.BigDecimal.ONE,rac)));
+        return dao;
+    }
+    private AdvancedReservationDAO.Booking advancedBooking(int from,int to,String cls,int count,boolean rac,boolean waiting,UUID hold) {
+        return new AdvancedReservationDAO.Booking(journey,from,to,cls,java.util.stream.IntStream.range(0,count).mapToObj(i->"Passenger "+i).toList(),"LOWER",rac,waiting,UUID.randomUUID(),hold);
+    }
+    @Test void advancedSegmentsReuseSeatsOnlyOnNonoverlappingLegs() throws Exception {
+        var dao=advanced(1,0);
+        int first=dao.book(user,advancedBooking(0,1,"STANDARD",1,false,false,null)).get(0);
+        int second=dao.book(user,advancedBooking(1,2,"STANDARD",1,false,false,null)).get(0);
+        Ticket a=new TicketDAO().getTicketById(first),b=new TicketDAO().getTicketById(second);
+        assertEquals(a.getSeatNumber(),b.getSeatNumber());assertEquals(40,a.getJourney().getFare());assertEquals(60,b.getJourney().getFare());
+        assertEquals("Middle",a.getJourney().getArrivalStation().getStationName());assertEquals("Middle",b.getJourney().getDepartureStation().getStationName());
+        assertThrows(AdvancedReservationDAO.Conflict.class,()->dao.book(user,advancedBooking(0,2,"STANDARD",1,false,false,null)));
+        assertEquals(2,scalar("SELECT COUNT(*) FROM tickets"));assertEquals(4,scalar("SELECT COUNT(*) FROM seat_occupancy"));
+        assertEquals(BookingResult.UNAVAILABLE,new TicketDAO().reserveTicket(ticket("ignored")));
+        assertEquals(TicketDAO.GroupResult.UNAVAILABLE,new TicketDAO().reserveGroup(user,journey,UUID.randomUUID().toString(),List.of("Legacy"),true).result());
+    }
+    @Test void seatHoldsExpireAndCannotBeConsumedByAnotherUser() throws Exception {
+        var dao=advanced(1,0);var hold=dao.hold(user,journey,0,2,"STANDARD",List.of("S1:1"));UUID id=(UUID)hold.get("holdId");
+        try(Connection c=connection();Statement s=c.createStatement()){s.execute("INSERT INTO users(username,password,email,full_name) VALUES('other','other','other@local','Other')");}
+        assertThrows(AdvancedReservationDAO.Conflict.class,()->dao.book(2,advancedBooking(0,2,"STANDARD",1,false,false,id)));
+        assertThrows(AdvancedReservationDAO.Conflict.class,()->dao.book(2,advancedBooking(0,2,"STANDARD",1,false,false,null)));
+        assertFalse(dao.release(2,id));
+        try(Connection c=connection();Statement s=c.createStatement()){s.execute("UPDATE seat_holds SET expires_at=NOW()-INTERVAL '1 second'");}
+        int ticket=dao.book(2,advancedBooking(0,2,"STANDARD",1,false,false,null)).get(0);assertTrue(ticket>0);
+        assertThrows(AdvancedReservationDAO.Conflict.class,()->dao.book(user,advancedBooking(0,2,"STANDARD",1,false,false,id)));
+        assertEquals(1,scalar("SELECT COUNT(*) FROM tickets"));
+    }
+    @Test void heldGroupIsAtomicAndExactSeatsSurviveRetries() throws Exception {
+        var dao=advanced(2,0);UUID id=(UUID)dao.hold(user,journey,0,2,"STANDARD",List.of("S1:1","S1:2")).get("holdId");
+        assertThrows(AdvancedReservationDAO.Conflict.class,()->dao.book(user,advancedBooking(0,2,"STANDARD",1,false,false,id)));
+        assertEquals(0,scalar("SELECT COUNT(*) FROM tickets"));assertEquals(8,scalar("SELECT COUNT(*) FROM seat_occupancy"));
+        var request=advancedBooking(0,2,"STANDARD",2,false,false,id);var ids=dao.book(user,request);assertEquals(ids,dao.book(user,request));
+        assertEquals(2,scalar("SELECT COUNT(*) FROM tickets"));assertEquals(2,scalar("SELECT COUNT(*) FROM notification_outbox"));
+        assertEquals(List.of("1","2"),ids.stream().map(i->new TicketDAO().getTicketById(i).getSeatNumber()).toList());
+    }
+    @Test void racSharesOnlyReservedBerthsAndPromotesBeforeWaiting() throws Exception {
+        var dao=advanced(8,1);
+        List<Integer> full=new ArrayList<>(dao.book(user,advancedBooking(0,2,"SLEEPER",6,false,false,null)));
+        full.addAll(dao.book(user,advancedBooking(0,2,"SLEEPER",1,false,false,null)));
+        int first=dao.book(user,advancedBooking(0,2,"SLEEPER",1,true,false,null)).get(0);
+        int second=dao.book(user,advancedBooking(0,2,"SLEEPER",1,true,false,null)).get(0);
+        assertEquals("RAC",new TicketDAO().getTicketById(first).getStatus());assertEquals("7",new TicketDAO().getTicketById(first).getSeatNumber());
+        assertEquals("7",new TicketDAO().getTicketById(second).getSeatNumber());
+        int waiting=dao.book(user,advancedBooking(0,2,"SLEEPER",1,true,true,null)).get(0);
+        assertEquals("WAITLISTED",new TicketDAO().getTicketById(waiting).getStatus());
+        assertEquals(TicketDAO.CancellationResult.CANCELLED,new TicketDAO().cancelTicket(full.get(0),user));
+        assertEquals("CONFIRMED",new TicketDAO().getTicketById(first).getStatus());assertEquals("RAC",new TicketDAO().getTicketById(waiting).getStatus());
+        assertEquals(0,scalar("SELECT COUNT(*) FROM (SELECT journey_id,coach_number,seat_number,leg,slot,COUNT(*) FROM seat_occupancy GROUP BY 1,2,3,4,5 HAVING COUNT(*)>1) x"));
+    }
+    @Test void advancedGroupFailureRollsBackTicketsOccupancyAndNotifications() throws Exception {
+        var dao=advanced(1,0);assertThrows(AdvancedReservationDAO.Conflict.class,()->dao.book(user,advancedBooking(0,2,"STANDARD",2,false,false,null)));
+        assertEquals(0,scalar("SELECT COUNT(*) FROM tickets"));assertEquals(0,scalar("SELECT COUNT(*) FROM seat_occupancy"));assertEquals(0,scalar("SELECT COUNT(*) FROM notification_outbox"));
+    }
+    @Test void classesAndPreferencesUseTheirOwnInventoryAndFares() throws Exception {
+        var dao=advanced(1,0);
+        // A plan may be replaced before any reservations or holds exist.
+        java.time.LocalDateTime departure,arrival;
+        try(Connection c=connection();Statement s=c.createStatement();ResultSet r=s.executeQuery("SELECT departure_time,arrival_time FROM journeys")){r.next();departure=r.getTimestamp(1).toLocalDateTime();arrival=r.getTimestamp(2).toLocalDateTime();}
+        dao.configure(journey,List.of(new AdvancedReservationDAO.Stop(1,departure,departure,java.math.BigDecimal.ZERO),new AdvancedReservationDAO.Stop(2,arrival,arrival,java.math.BigDecimal.valueOf(100))),
+            List.of(new AdvancedReservationDAO.Coach("S1","SLEEPER",8,java.math.BigDecimal.ONE,0),new AdvancedReservationDAO.Coach("A1","AC2",2,java.math.BigDecimal.valueOf(2),0)));
+        int ticket=dao.book(user,advancedBooking(0,1,"AC2",1,false,false,null)).get(0);
+        assertEquals("A1",new TicketDAO().getTicketById(ticket).getCoachNumber());assertEquals(200,new TicketDAO().getTicketById(ticket).getJourney().getFare());
+        assertThrows(AdvancedReservationDAO.Conflict.class,()->dao.configure(journey,List.of(new AdvancedReservationDAO.Stop(1,departure,departure,java.math.BigDecimal.ZERO),new AdvancedReservationDAO.Stop(2,arrival,arrival,java.math.BigDecimal.valueOf(100))),List.of(new AdvancedReservationDAO.Coach("Z1","STANDARD",1,java.math.BigDecimal.ONE,0))));
+    }
+    @Test void recoveryCodesAreSingleUseAndPasswordResetRevokesOldCredentials() throws Exception {
+        var dao=new RecoveryDAO();assertTrue(dao.generate(user,"wrong").isEmpty());var old=dao.generate(user,"test");assertEquals(8,old.size());
+        var current=dao.generate(user,"test");assertFalse(dao.reset("test",old.get(0),"NewPassword123!"));
+        assertTrue(dao.reset("test",current.get(0),"NewPassword123!"));assertFalse(dao.reset("test",current.get(0),"AnotherPassword123!"));
+        assertNull(new UserDAO().authenticate("test","test"));assertNotNull(new UserDAO().authenticate("test","NewPassword123!"));assertEquals(1,dao.version(user));
+    }
+    @Test void emailResetTokensExpireAndCannotBeReused() throws Exception {
+        var dao=new PasswordResetDAO();assertNull(dao.request("nonexistent"));var request=dao.request("test");assertNotNull(request);assertNull(dao.request("test"));
+        assertTrue(dao.complete(request.token(),"EmailPassword123!"));assertFalse(dao.complete(request.token(),"ReusePassword123!"));assertNotNull(new UserDAO().authenticate("test","EmailPassword123!"));
+        var expired=dao.request("test");try(Connection c=connection();Statement s=c.createStatement()){s.execute("UPDATE password_reset_tokens SET expires_at=NOW()-INTERVAL '1 second'");}
+        assertFalse(dao.complete(expired.token(),"ExpiredPassword123!"));
+    }
+
+    @Test void archivedIntermediateStationDoesNotPreventIndividualCancellation() throws Exception {
+        var dao=advanced(1,0);int ticket=dao.book(user,advancedBooking(0,1,"STANDARD",1,false,false,null)).get(0);
+        dao.book(user,advancedBooking(0,1,"STANDARD",1,false,true,null));
+        try(Connection c=connection();Statement s=c.createStatement()){s.execute("UPDATE stations SET is_active=FALSE WHERE station_id=3");}
+        assertEquals(TicketDAO.CancellationResult.CANCELLED,new TicketDAO().cancelTicket(ticket,user));
+    }
+    @Test void outboxDeliveryUsesCommittedEventsAndRetriesWithoutChangingTickets() throws Exception {
+        Ticket ticket=ticket("ignored");new TicketDAO().reserveTicket(ticket);
+        var factory=new org.springframework.beans.factory.support.StaticListableBeanFactory();
+        List<org.springframework.mail.SimpleMailMessage> sent=new ArrayList<>();
+        org.springframework.mail.javamail.JavaMailSenderImpl fake=new org.springframework.mail.javamail.JavaMailSenderImpl(){
+            @Override public void send(org.springframework.mail.SimpleMailMessage... messages){sent.addAll(List.of(messages));}
+        };
+        factory.addBean("mail",fake);
+        var mail=new com.trainticket.service.EmailDeliveryService(factory.getBeanProvider(org.springframework.mail.javamail.JavaMailSender.class),"sender@example.test","http://localhost:8080","local-test","smtp","",new com.fasterxml.jackson.databind.ObjectMapper());
+        mail.deliverPending();assertEquals(1,sent.size());assertTrue(sent.get(0).getText().contains("CONFIRMED"));
+        assertEquals(1,scalar("SELECT COUNT(*) FROM notification_outbox WHERE state='SENT'"));
+        mail.deliverPending();assertEquals(1,sent.size());
+        new TicketDAO().cancelTicket(ticket.getTicketId(),user);mail.deliverPending();assertEquals(2,sent.size());assertTrue(sent.get(1).getText().contains("CANCELLED"));
+    }
+    @Test void concurrentAdvancedBookingsCannotClaimOneSeatTwice() throws Exception {
+        var dao=advanced(1,0);ExecutorService pool=Executors.newFixedThreadPool(3);
+        try {
+            List<Callable<Boolean>> calls=new ArrayList<>();for(int i=0;i<3;i++)calls.add(()->{try{dao.book(user,advancedBooking(0,2,"STANDARD",1,false,false,null));return true;}catch(AdvancedReservationDAO.Conflict e){return false;}});
+            int successes=0;for(var f:pool.invokeAll(calls))if(f.get(20,TimeUnit.SECONDS))successes++;
+            assertEquals(1,successes);assertEquals(1,scalar("SELECT COUNT(*) FROM tickets"));assertEquals(4,scalar("SELECT COUNT(*) FROM seat_occupancy"));
+        }finally{pool.shutdownNow();}
     }
 
     @AfterAll static void cleanup() throws Exception {
