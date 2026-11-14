@@ -1,258 +1,405 @@
-# TrackEase - Railway Reservation Platform
+<div align="center">
 
-A Java 17 / Spring Boot 3.5 application with a working JSP interface, session-based
-Spring Security authorization, PostgreSQL, and a documented JSON API.
-The original Eclipse / javax Servlet / Tomcat 9 project has been migrated to
-Jakarta Servlet APIs and embedded Tomcat. No external Tomcat installation is
-required now. The executable WAR is built from source.
+# 🚆 TrackEase
 
-## Implemented features
+### Railway reservations. Thoughtfully engineered.
 
-- Responsive green-and-ivory interface with a custom railway illustration, shared components, and locally served UI assets.
-- Station swapping, local-date shortcuts, journey sorting, ticket status filters, printable tickets, and admin booking search.
-- Registration, salted PBKDF2 password hashes, and login-time migration of legacy plaintext passwords.
-- Fresh sessions after login, HttpOnly/SameSite cookies, role checks, CSRF tokens, and escaped JSP output.
-- Station/date journey search, including full future journeys that offer a waiting list.
-- Automatic seat allocation from per-journey inventory, with a unique active-seat index.
-- Idempotent booking requests: repeated submissions return the original ticket.
-- Book 1–6 named passengers in one transaction, with one booking reference and separate passenger tickets.
-- Group bookings roll back if seats run out, unless waiting-list consent allows a mix of confirmed and waitlisted passengers. Seats together are not guaranteed.
-- Explicit opt-in waiting list, FIFO promotion, queue position, and cancellation before departure.
-- Atomic cancellation and promotion under the same journey lock as booking.
-- Ticket ownership checks, booking history, and immutable booked fare for new reservations.
-- Archived trains/stations retain historical tickets. Archived records cannot receive new bookings.
-- Admin CRUD APIs, database-backed dashboard totals, 30-day booking trends and occupancy counts.
-- Booking audit events, pooled JDBC connections, Flyway migrations, Bean Validation and API errors.
-- OpenAPI/Swagger UI, Actuator health, executable Docker image, Compose and GitHub Actions CI.
+Search journeys, book up to six passengers together, and manage every ticket—backed by transactional seat allocation and a FIFO waiting list.
 
-The JSP interface uses local Bootstrap 5.1.3, Font Awesome 6.0.0 (solid/regular fonts),
-and jQuery 3.6.0 for retained admin forms. It does not require a third-party CDN.
-The railway illustration is an original SVG in `assets/images/rail-landscape.svg`.
-The old empty image placeholders are not used. Bookings are demonstrations; no payment is collected.
+[![Build and verify](https://github.com/ShambhaviSingh16/Online-Reservation-Portal/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ShambhaviSingh16/Online-Reservation-Portal/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
-For the optional desktop/mobile browser checks (using installed Edge or Chrome):
+**[Live Demo](https://trackease-njtn.onrender.com) · [Live Swagger UI](https://trackease-njtn.onrender.com/swagger-ui.html) · [Quick Start](#quick-start) · [Engineering Decisions](#engineering-decisions) · [Testing](#testing)**
 
-```powershell
-npm.cmd install --prefix .local/browser-test --no-audit --no-fund playwright
-node scripts/smoke-ui.cjs
-node scripts/smoke-group.cjs
+</div>
+
+## Overview
+
+TrackEase is a full-stack Java railway reservation application with passenger and administrator workflows, a responsive JSP interface, and a documented REST API. Its core challenge is keeping reservations correct when passengers compete for limited seats, retry a booking, cancel a ticket, or join a waiting list.
+
+Originally developed in **Eclipse with Java Servlets and Tomcat 9**, the project has been modernized into a **Java 17 / Spring Boot application** using Jakarta Servlets, embedded Tomcat, Spring Security, PostgreSQL, and Docker. Development now runs in VS Code, with a build that also works independently of an IDE.
+
+The application is a **single deployable system** with shared reservation logic behind the browser and API workflows. It demonstrates relational data modeling, transaction boundaries, authorization, integration testing, and deployment alongside the user interface.
+
+> **Demo scope:** TrackEase is a portfolio application. Reservations are demonstrations, no payments are collected, and generated tickets are not official railway travel documents. The hosted demo uses Render's free web-service tier, so its first request after inactivity may take longer.
+
+## What makes this project interesting
+
+| Engineering problem | Implemented solution |
+| --- | --- |
+| Two requests competing for the same remaining seat | PostgreSQL journey-row locks, transactional capacity updates, and a unique active-seat index |
+| A repeated click or retried request creating duplicate tickets | UUID request keys return the existing reservation instead of allocating again |
+| A group being left with only some tickets after seats run out | One transaction covers all passengers; insufficient capacity rolls back the group unless waiting-list participation was explicitly allowed |
+| A cancellation and a new booking racing for released capacity | Cancellation, inventory release, and waiting-list promotion share the journey lock and transaction |
+| Historical tickets changing when schedules or fares are edited | Booked fares are snapshotted; train/station archival preserves history; conflicting journey changes are rejected |
+| One user guessing another passenger's ticket ID | Server-side ownership checks, including API access and ticket pages |
+
+## Product walkthrough
+
+1. **Find a train:** select departure, destination, and travel date; compare fares, duration, and available seats.
+2. **Add passengers:** book **1–6 named passengers** in one submission and review the total fare.
+3. **Confirm:** the server checks current availability and assigns seats and coaches automatically.
+4. **Review the booking:** view all passengers under one booking reference, with separate ticket statuses and seat details.
+5. **Manage each ticket:** view, print, or cancel individual reservations before departure. Waiting passengers are promoted in queue order when capacity becomes available.
+
+### Passenger features
+
+- Account registration, login, logout, and a personalized dashboard.
+- Station swapping and local-date shortcuts in journey search.
+- Results sorted by departure time, fare, or duration.
+- Automatic seat and coach allocation, with no manual seat-number entry.
+- Group reservations with passenger names, a shared reference, and individual tickets.
+- Explicit waiting-list consent, current queue positions, and automatic promotion.
+- Ticket history with confirmed, waitlisted, and cancelled filters.
+- Print-friendly individual tickets and group booking summaries.
+- Responsive desktop/mobile layouts with locally served styles, scripts, and icons.
+
+### Administrator features
+
+- Manage trains, stations, schedules, fares, and journey inventory.
+- Archive trains and stations while retaining historical reservations.
+- Search passenger bookings in the browser interface.
+- View database-backed dashboard totals and recorded confirmed-booking value.
+- Access paginated booking records and ticket audit events through the API.
+- Retrieve 30-day booking counts and journey occupancy data through the analytics API.
+
+## Screenshots
+
+Screenshots below show the working application with seeded **local demonstration data**. Hosted data may differ.
+
+<div align="center">
+  <img src="docs/images/home.png" alt="TrackEase landing page with the green-and-ivory design and original railway illustration" width="100%">
+</div>
+
+<details>
+<summary><strong>Explore journey search, group booking, and the admin dashboard</strong></summary>
+
+### Journey search
+
+![Journey search with station selection, date shortcuts, and automatic seat-allocation information](docs/images/journey-search.png)
+
+### One booking, multiple passengers
+
+![Shared booking summary showing two named passengers, separate seats, and the total recorded fare](docs/images/group-booking.png)
+
+### Administrator workspace
+
+![Administrator dashboard with live database totals and train, station, journey, and booking workspaces](docs/images/admin-dashboard.png)
+
+</details>
+
+## Technology stack
+
+| Layer | Technology |
+| --- | --- |
+| Language and build | Java 17, Maven |
+| Application framework | Spring Boot 3.5, embedded Tomcat 10.1 |
+| Browser workflows | Jakarta Servlets, JSP, HTML, CSS, JavaScript |
+| UI components | Bootstrap 5.1.3, Font Awesome 6.0.0; jQuery 3.6.0 for retained admin forms |
+| Authentication and authorization | Spring Security, server-side sessions, passenger/admin roles |
+| Persistence | PostgreSQL, JDBC, HikariCP connection pooling |
+| Schema management | Flyway versioned migrations |
+| API | Spring MVC, Jakarta Bean Validation, OpenAPI / Swagger UI |
+| Verification | JUnit 5, PostgreSQL integration tests, HTTP smoke scripts, Playwright browser checks |
+| Delivery | Multi-stage Docker build, Docker Compose, GitHub Actions, Render |
+
+Dependencies are pinned in [`pom.xml`](pom.xml). PostgreSQL 17 is used in CI. The application uses JDBC rather than an ORM; authentication is session-based rather than JWT-based.
+
+## Architecture
+
+```mermaid
+flowchart TB
+    Browser["Browser · JSP interface"] --> Security["Spring Security + session + CSRF validation"]
+    Client["REST client / Swagger UI"] --> Security
+    Security --> Web["Jakarta Servlet controllers"]
+    Security --> API["Spring MVC REST controllers"]
+    Web --> DAO["JDBC DAOs · reservation transactions"]
+    API --> Service["Reservation service · API orchestration / ownership"]
+    Service --> DAO
+    API --> DAO
+    DAO --> Pool["HikariCP connection pool"]
+    Pool --> DB[("PostgreSQL")]
+    Flyway["Flyway migrations"] --> DB
 ```
 
-The browser checks save screenshots under `.local/ui-*.png` and verify the JSP interface
-with external network requests blocked. Run the local server and seed database first.
+The existing servlet/JSP workflows were retained during the Spring Boot migration. REST endpoints use validated request models, and both entry points use the same JDBC reservation implementation. The application is packaged as an **executable WAR**, so a separate Tomcat installation is unnecessary.
 
-For a group reservation, open a journey's booking dialog, choose 1–6 passengers,
-and enter each passenger's full name. The total updates before confirmation.
-One submission produces a shared booking reference and individual tickets; each
-ticket can be cancelled separately. Without waiting-list consent the entire
-booking fails if there are too few seats. With consent, some passengers may be
-confirmed while others remain waitlisted. Adjacent seats are not guaranteed.
-The JSON equivalents are `POST /api/bookings/group` (journeyId, requestId,
-passengerNames, joinWaitingList) and `GET /api/bookings/group/{bookingId}`.
-The original single-ticket API remains supported.
+### Engineering decisions
 
-## Run in VS Code on this Windows machine
+- **Lock at the journey boundary.** A booking locks its journey row before checking capacity and assigning a seat. Cancellation uses the same lock, keeping competing inventory changes in a consistent order.
+- **Treat a group as one transaction.** Passenger tickets and audit events commit together. Group request keys are also serialized with PostgreSQL transaction-level advisory locks to handle concurrent retries.
+- **Keep tickets individually manageable.** Group membership does not remove each passenger's status, waiting position, or cancellation lifecycle.
+- **Record changes rather than erase history.** Cancelled tickets and booking events remain available; promotion events distinguish system actions from user actions.
+- **Modernize incrementally.** Existing JSP and JDBC workflows remain usable while Spring Boot adds embedded hosting, security integration, pooling, migrations, and REST documentation.
 
-Requirements: JDK 17+, Maven 3.9+, VS Code Extension Pack for Java.
-Portable PostgreSQL binaries are already installed at `.local/pgsql` on this machine.
-For a fresh checkout, download the [EDB Windows binaries](https://www.enterprisedb.com/download-postgresql-binaries)
-and extract them to `.local`, creating `.local/pgsql/bin/pg_ctl.exe`.
+### Reservation rules
 
-Use **Terminal > Run Task > TrackEase: run locally**, or:
+| Rule | Behavior |
+| --- | --- |
+| Group size | 1–6 named passengers per group submission |
+| Insufficient seats without waiting-list consent | No passenger tickets are committed |
+| Insufficient seats with consent | Some passengers may be confirmed while others are waitlisted |
+| Seat layout | Simplified standard coaches: S1, S2, etc., with up to 80 numbered seats per coach |
+| Seats together | Not guaranteed |
+| Waiting-list order | Ticket creation order under the journey lock |
+| Cancellation | Individual tickets, before departure; repeated cancellation cannot release capacity twice |
+| Existing request retry | Returns the original reservation's current state; changing group passengers with the same key is rejected |
+| Time handling | Railway schedule times use Asia/Kolkata |
+| Fare handling | New tickets retain their booked fare; dashboard value is recorded fare, not collected revenue |
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1
+Train capacity should be configured before bookings begin. Route, train, and capacity changes that would rewrite booked journeys are rejected. Legacy manual seat labels remain intact; legacy fares are initialized from their journey fare during migration because an original booked fare was not stored.
+
+## Quick start
+
+### Option 1: Docker Compose
+
+**Requirements:** Git, Docker, and Docker Compose.
+
+```bash
+git clone https://github.com/ShambhaviSingh16/Online-Reservation-Portal.git
+cd Online-Reservation-Portal
+cp .env.example .env
 ```
 
-The script starts the isolated PostgreSQL database on `127.0.0.1:5433`, seeds demo
-records, builds the application and starts Spring Boot at **http://localhost:8080**.
-It never connects to Render. Logs are in `.local/app.log` and `.local/app-error.log`.
-Database files persist in `.local/pgdata`; do not delete that directory to rebuild.
-The default demo journey is New Delhi (NDLS) to Kanpur Central (CNB), tomorrow.
+On PowerShell, use `Copy-Item .env.example .env` for the last command. Open `.env` and replace `DB_PASSWORD` with a long, unique development password. Then run:
 
-| Role | Username | Password |
-| --- | --- | --- |
-| Admin | admin | Admin123! |
-| Passenger | demo | Demo123! |
-
-These are public local demo credentials. Do not seed them into a production database.
-
-Stop with the **TrackEase: stop locally** task or:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local.ps1
-```
-
-Use `-KeepDatabase` to stop only the app. Stop the app before rebuilding its WAR.
-Restart the run task after code changes; refresh existing browser tabs and search
-again. Use an external browser if an embedded preview blocks framing: Spring Security
-protects pages against clickjacking.
-
-For debugging, run `scripts/start-local.ps1 -DebugServer`, then select
-**Attach to local Tomcat (8000)** and press F5. The debugger attaches to embedded Tomcat.
-`-Port 8081` selects another HTTP port. `-SkipBuild` runs an already-built WAR.
-
-## Build and test
-
-```powershell
-mvn package
-mvn "-Dtrackease.integration=true" test
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-local.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-api.ps1
-```
-
-For a real browser check of Swagger's **Try it out** authentication flow, install
-the optional local test harness and run it with Microsoft Edge or Chrome:
-
-```powershell
-npm install --prefix .local/browser-test --no-audit --no-fund playwright
-node scripts/smoke-swagger.cjs
-```
-
-This checks page rendering, documented security, rejected tokenless login,
-authorized login, the refreshed token, authenticated account access and logout.
-It saves a screenshot at `.local/swagger-tested.png`.
-
-Ordinary builds run unit tests without a database. Integration tests require the
-workspace PostgreSQL database and generate a disposable schema. They refuse
-remote database URLs and never truncate demo tables. They cover concurrent
-allocation, the final seat, retries, rollback, inventory exhaustion, coach
-boundaries, legacy seats, password migration, cancellation, FIFO promotion,
-concurrent cancellation, booked fare snapshots and archived trains.
-
-The HTTP checks require a running app. They create local accounts, tickets and a
-one-seat test journey. The API script archives its test train and cancels its
-tickets; audit/history records remain for inspection.
-
-Output: `target/TrackEase.war`. Run it directly with:
-
-```powershell
-java -jar target/TrackEase.war --debug=false
-```
-
-`bin`, `build`, the root-level `TrackEasee.war` and external Tomcat folders are not
-used by the build. Maven caches dependencies in `.local/maven-repository`.
-
-## JSON API and documentation
-
-- Swagger UI: **http://localhost:8080/swagger-ui.html**
-- OpenAPI JSON: **http://localhost:8080/v3/api-docs**
-- Health: **http://localhost:8080/actuator/health**
-
-Authentication uses the same session cookie as the JSP interface. JWT is not
-needed for this browser-first application. For JSON writes:
-
-1. GET `/api/auth/csrf`, retaining the session cookie.
-2. Send its token in the `X-CSRF-Token` header on POST/PUT/DELETE.
-3. POST `/api/auth/login` with username/password. Login creates a new session;
-   use the new cookie and the `csrfToken` returned in its response.
-
-In Swagger UI, execute `/api/auth/csrf`, then use **Authorize > csrfToken** to
-enter the returned token. Execute login and replace the authorized token with
-the new `csrfToken` in the login response. The browser keeps the session cookie
-automatically; no manual cookie entry is needed. You can then use **Try it out**
-for protected requests. Log in with `admin` for administrator endpoints.
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| GET/POST | `/api/auth/csrf`, `/api/auth/login`, `/api/auth/register` | Authentication setup |
-| GET/POST | `/api/auth/me`, `/api/auth/logout` | Current account / logout |
-| GET | `/api/stations` | Station choices |
-| GET | `/api/journeys/search?departureStation=1&arrivalStation=2&travelDate=YYYY-MM-DD` | Journey search |
-| POST | `/api/bookings` | `{journeyId, requestId: UUID, joinWaitingList: boolean}` |
-| GET/DELETE | `/api/bookings/{id}` | Own ticket / cancel |
-| GET | `/api/bookings/history?page=0&size=20` | Paginated own history |
-| GET/POST/PUT/DELETE | `/api/admin/trains`, `/stations`, `/journeys` | Admin CRUD; PUT/DELETE use `/{id}` |
-| GET | `/api/admin/bookings?page=0&size=20` | Paginated bookings |
-| GET | `/api/admin/bookings/{id}/events` | Audit events |
-| GET | `/api/admin/analytics` | Dashboard, trends and occupancy counts |
-
-Invalid fields return 400; missing authentication 401; forbidden actions/CSRF
-403; another user's ticket 404; unavailable inventory or conflicting records 409.
-Identifiers and prices are validated on the server. JSON errors do not expose SQL
-or stack traces. An unavailable underlying DAO may report a generic service error;
-inspect server logs for diagnostics.
-
-## Booking and waiting-list rules
-
-- One ticket per submission. Use a fresh request UUID for an intentional new booking.
-- Inventory snapshots use the train's configured capacity, with up to 80 numbered
-  seats per standard coach (S1, S2, etc.). This is a simplified project layout.
-- Existing manual ticket labels remain intact and consume their existing quota.
-  Confirmed labels matching the inventory are skipped during allocation.
-- Joining the waiting list requires explicit consent and does not decrement capacity.
-- The queue uses ticket creation order under the journey lock. Cancellation offers
-  free capacity to the oldest eligible waiting tickets first, in the same transaction.
-- Cancelled tickets and audit history are retained. Cancelling a waiting ticket
-  does not release capacity. Repeated cancellation cannot release capacity twice.
-- Booking/cancellation close at departure. Retrying an existing request still
-  returns that ticket's current state, including CANCELLED.
-- New tickets snapshot their fare. Legacy tickets take their current journey fare
-  during the migration because their original fare was not stored.
-- Schedule times are local railway times in Asia/Kolkata. There is no route-segment
-  seat reuse, real railway integration, payment collection, RAC or berth-sharing.
-- Configure train capacity before bookings. Journey train/route/capacity changes
-  after bookings start are rejected; historical reservations are never rewritten.
-
-Audit events start with this upgrade. A null actor on a promotion means the system
-performed it. Dashboard booking value is the sum of CONFIRMED ticket fares, not
-collected payment revenue. Trends count all created tickets; occupancy reports
-confirmed counts and configured remaining quota.
-
-## Configuration and migrations
-
-The local script creates ignored `local.properties` with a random database password.
-`DB_URL` (JDBC PostgreSQL URL), `DB_USER` and `DB_PASSWORD` override those settings.
-Clear these environment variables when using the isolated local script. Never
-commit `local.properties`, `.env`, database data or logs.
-
-Flyway migrations are under `src/main/resources/db/migration` and run at startup.
-Existing schemas are baselined at version 0; idempotent V1 adds the reservation
-schema without dropping tickets. Never edit an applied migration: add a new version.
-`database/schema.sql` is also used to provision the portable local database and
-isolated integration-test schemas. Production startup never inserts demo accounts.
-
-Existing duplicate confirmed seat labels must be reviewed before applying the
-unique seat index. No migration silently deletes conflicting bookings.
-
-New passwords must contain 12-128 characters. PBKDF2-HMAC-SHA256 uses a random salt
-and 600,000 iterations. Correct login upgrades a legacy plaintext row; dormant
-legacy accounts remain plaintext until migrated or reset. CSRF/session tokens
-must be refreshed after login or expiration. JSP values are escaped before rendering.
-
-## Docker, Render and CI
-
-```powershell
-Copy-Item .env.example .env
-# Replace DB_PASSWORD in .env before running:
+```bash
 docker compose up --build
 ```
 
-Compose creates a separate PostgreSQL volume and an app database schema through
-Flyway. It does not seed demo users; register a normal account through the UI.
-Promote your own account to admin using an authorized database connection if
-needed. The Windows portable demo database remains separate.
+Open **[http://localhost:8080](http://localhost:8080)**. Compose starts PostgreSQL and the application; Flyway creates the schema automatically. Database data persists in the Compose volume.
 
-The multi-stage Dockerfile builds from source and runs the executable WAR with
-embedded Tomcat. On Render, set `DB_URL`, `DB_USER`, `DB_PASSWORD` and
-`SPRING_PROFILES_ACTIVE=prod`. Render's `PORT` is honored. Production cookies
-require HTTPS; forwarded headers support the hosting proxy. No live deployment
-is performed automatically by editing this repository.
+**A fresh database starts empty.** Register a passenger account through the UI. Trains, stations, and journeys must be added through an administrator account before searches can return results. Demo accounts are not inserted by application startup.
 
-GitHub Actions builds on Java 17, runs the unit and PostgreSQL integration tests,
-and builds the Docker image. It does not deploy or require a Render token.
-The workflow is prepared for GitHub execution; local checks are separate evidence.
+<details>
+<summary><strong>Create an administrator in your own local Compose database</strong></summary>
 
-## Architecture and scope
+First register an account through the UI. Then, in a terminal with access to your local Compose project, replace `your_username` with that account's username:
 
-`api` contains validated Spring MVC endpoints; `service` contains API ownership and
-reservation orchestration; `dao` retains the tested PostgreSQL/JDBC transactions.
-The application uses Hikari pooling, Flyway and Spring Security. Existing Jakarta
-servlets continue serving the JSP workflows during this incremental modernization.
-This is not a JPA/Hibernate rewrite, and no ORM or JWT claims are made.
+```bash
+docker compose exec db psql -U trackease -d trackease -c "UPDATE users SET role='admin' WHERE username='your_username';"
+```
 
-Optional follow-ups are email delivery, downloadable PDF tickets, a seat map,
-multiple classes/preferences, RAC, payment sandbox integration and a separate
-frontend. These are not required to exercise the implemented booking lifecycle.
-The framework version is pinned in `pom.xml`; review release support/security
-updates before a public production rollout.
+Log out and log in again to load the administrator role. Add stations, a train, and a future journey through the admin workspace. There is no public endpoint for granting administrator privileges.
+
+</details>
+
+### Option 2: Windows + VS Code + portable PostgreSQL
+
+**Requirements:** JDK 17+, Maven 3.9+, PowerShell, and PostgreSQL binaries. The VS Code Extension Pack for Java is recommended for editing and debugging.
+
+1. Clone the repository and open its folder in VS Code.
+2. Download and extract the [EDB PostgreSQL Windows binaries](https://www.enterprisedb.com/download-postgresql-binaries) so that `.local/pgsql/bin/pg_ctl.exe` exists. PostgreSQL binaries and database data are not committed.
+3. Start the local development environment:
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1
+   ```
+
+The script initializes an isolated database at `127.0.0.1:5433`, creates ignored local credentials, seeds demonstration records, builds the WAR, and starts the application on port `8080`. It is restricted to the workspace database; clear `DB_URL`, `DB_USER`, and `DB_PASSWORD` environment overrides before using this mode.
+
+| Local seeded role | Username | Password |
+| --- | --- | --- |
+| Administrator | `admin` | `Admin123!` |
+| Passenger | `demo` | `Demo123!` |
+
+These credentials are **only for the portable local demo**. They are not hosted-demo credentials and should not be seeded into a public database. New accounts require passwords of 12–128 characters.
+
+For a sample search, choose **New Delhi (NDLS) → Kanpur Central (CNB), tomorrow**.
+
+```powershell
+# Stop the application and local database
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local.ps1
+
+# Stop only the application before rebuilding its WAR
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local.ps1 -KeepDatabase
+```
+
+VS Code also provides **TrackEase: run locally**, **TrackEase: stop locally**, and **TrackEase: build WAR** tasks. Use `scripts/start-local.ps1 -DebugServer` and the **Attach to local Tomcat (8000)** launch configuration for debugging. `-Port 8081` selects another HTTP port; `-SkipBuild` starts an existing WAR.
+
+Local logs live in `.local/app.log` and `.local/app-error.log`; persistent database files live in `.local/pgdata`. Restart the app after changes. Use an external browser if an IDE preview blocks framed pages.
+
+### Build independently of the IDE
+
+With PostgreSQL configured through environment variables or `local.properties`:
+
+```bash
+mvn package
+java -jar target/TrackEase.war --debug=false
+```
+
+Maven uses `.local/maven-repository` for its dependency cache. The root-level legacy WAR and the Eclipse `build/` and `bin/` outputs are not used by the current build.
+
+## API documentation
+
+| Resource | Local URL |
+| --- | --- |
+| Swagger UI | [localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) |
+| OpenAPI specification | [localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) |
+| Health endpoint | [localhost:8080/actuator/health](http://localhost:8080/actuator/health) |
+
+### Authentication in Swagger
+
+The API shares the application's session cookie. Use the same hostname for the UI and API documentation.
+
+1. Execute `GET /api/auth/csrf`.
+2. Copy its `token` into **Authorize → csrfToken**.
+3. Execute `POST /api/auth/login` with your username and password.
+4. Replace the authorized token with the **new `csrfToken` returned by login**.
+5. Try protected endpoints. The browser manages the session cookie automatically.
+
+Unsafe JSON requests require `X-CSRF-Token`. Login rotates the session; logout invalidates it. Administrator endpoints require an administrator account.
+
+### Key endpoints
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/api/auth/csrf` | Obtain a session CSRF token |
+| POST | `/api/auth/register`, `/api/auth/login`, `/api/auth/logout` | Account/session lifecycle |
+| GET | `/api/auth/me` | Current authenticated account |
+| GET | `/api/stations` | Available station choices |
+| GET | `/api/journeys/search` | Search by departure station, arrival station, and date |
+| POST | `/api/bookings` | Single-ticket reservation |
+| POST | `/api/bookings/group` | Reserve 1–6 named passengers |
+| GET | `/api/bookings/group/{bookingId}` | Retrieve your shared booking and passenger tickets |
+| GET / DELETE | `/api/bookings/{id}` | Retrieve or cancel your ticket |
+| GET | `/api/bookings/history` | Paginated personal booking history |
+| GET / POST | `/api/admin/trains`, `/api/admin/stations`, `/api/admin/journeys` | List/create operational records |
+| PUT / DELETE | `/api/admin/trains/{id}`, `/api/admin/stations/{id}`, `/api/admin/journeys/{id}` | Update records; archive trains/stations or delete unused journeys |
+| GET | `/api/admin/bookings` | Paginated administrator booking records |
+| GET | `/api/admin/bookings/{id}/events` | Ticket audit events |
+| GET | `/api/admin/analytics` | Summary totals, daily booking counts, and occupancy data |
+
+### Example: group reservation
+
+Send this JSON to `POST /api/bookings/group` with your session cookie and CSRF header. Replace `journeyId` with a real future journey and generate a fresh UUID for an intentional new booking.
+
+```json
+{
+  "journeyId": 1,
+  "requestId": "e757051a-c70f-4d98-aeaa-b45967f93dda",
+  "passengerNames": ["Asha Rao", "Ravi Shah"],
+  "joinWaitingList": false
+}
+```
+
+The response contains a `bookingId` and the passenger `tickets`. Repeating the same valid request returns the existing tickets. With `joinWaitingList: false`, insufficient capacity returns a conflict and creates no tickets.
+
+Validation errors return **400**; missing authentication **401**; forbidden actions or invalid CSRF **403**; inaccessible ticket/group references **404**; unavailable inventory or conflicting records **409**. Database/service failures return a generic error rather than exposing SQL or stack traces.
+
+## Security
+
+- **Password storage:** salted PBKDF2-HMAC-SHA256 with 600,000 iterations; legacy plaintext passwords upgrade on successful authentication.
+- **Session handling:** fresh sessions on login, HttpOnly/SameSite cookies, POST-only logout, and secure cookies in the production profile.
+- **Authorization:** passenger/admin route checks plus ticket and group ownership checks.
+- **CSRF protection:** session-bound tokens for JSP forms and `X-CSRF-Token` validation for unsafe API requests, implemented by the application's shared CSRF filter.
+- **Output and input handling:** escaped JSP output, prepared SQL statements, and server-side API validation.
+- **Configuration:** database credentials come from environment variables or an ignored local file; production startup does not seed default accounts.
+
+Legacy accounts that have not logged in still require migration or a password reset. Existing duplicate confirmed seat labels require review before applying the unique-seat migration; migrations do not silently delete conflicting bookings.
+
+## Testing
+
+The latest local verification completed **30 JUnit tests with zero failures, errors, or skips**, including **24 PostgreSQL integration tests**. Test counts describe the verified implementation; workflow status and generated reports provide current build evidence.
+
+| Verification layer | Coverage |
+| --- | --- |
+| Unit/validation tests | Password hashing, HTML escaping, invalid API inputs, OpenAPI security configuration |
+| PostgreSQL integration tests | Concurrent seat allocation, final-seat contention, retries, rollback, coach boundaries, cancellation, FIFO promotion, fare snapshots, archival, and group-booking races |
+| HTTP smoke tests | Passenger/admin journeys, single-ticket compatibility, ownership, CSRF failures, API booking lifecycle, waiting-list promotion, and audit data |
+| Browser checks | Desktop/mobile layouts, local UI assets with third-party requests blocked, search interactions, booking dialogs, ticket filters, and admin pages |
+| Group browser/API checks | Multiple named passengers, total fare, unique seats, retry safety, validation, ownership, individual cancellation, mobile rendering, and print output |
+| Swagger browser checks | Real Try it out flow: CSRF setup, login, session refresh, authenticated access, and logout |
+
+```powershell
+# Unit tests; database integration tests are opt-in
+mvn test
+
+# Requires the portable local PostgreSQL configuration at 127.0.0.1:5433
+mvn "-Dtrackease.integration=true" verify
+
+# Requires the running, seeded local application
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-local.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-api.ps1
+
+# Optional browser harness; uses installed Microsoft Edge or Google Chrome
+npm install --prefix .local/browser-test --no-audit --no-fund playwright
+node scripts/smoke-ui.cjs
+node scripts/smoke-group.cjs
+node scripts/smoke-swagger.cjs
+```
+
+Integration tests create and remove a **disposable schema** in the local database. They reject remote database URLs and do not truncate demonstration tables. HTTP/browser checks create local test records; retained ticket and audit history is intentional. Surefire reports are written to `target/surefire-reports`; browser screenshots and print artifacts go to `.local/`.
+
+The [GitHub Actions workflow](.github/workflows/ci.yml) builds with Java 17, runs the unit and PostgreSQL integration tests, builds the Docker image, and uploads verification reports. CI builds are separate from Render deployments.
+
+## Deployment and configuration
+
+The [Dockerfile](Dockerfile) builds the executable WAR from source in a Maven stage, then runs it in a Java 17 runtime image. Render provides the HTTP port through `PORT`.
+
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `DB_URL` | JDBC PostgreSQL connection URL | `jdbc:postgresql://YOUR_HOST:5432/YOUR_DATABASE` |
+| `DB_USER` | Database username | Your database user |
+| `DB_PASSWORD` | Database password | Set in the hosting provider's secret configuration |
+| `SPRING_PROFILES_ACTIVE` | Production HTTPS/proxy settings | `prod` on Render |
+| `PORT` | HTTP listening port | Supplied by Render; defaults to `8080` locally |
+
+Use a PostgreSQL database in the same region as the web service when using Render's internal network. Configure actual database values rather than copying placeholder hostnames. The production profile enables secure session cookies and forwarded-header handling for the HTTPS proxy.
+
+Flyway runs the migrations in [`src/main/resources/db/migration`](src/main/resources/db/migration) at startup:
+
+| Version | Change |
+| --- | --- |
+| V1 | Reservation schema and baseline modernization |
+| V2 | System actor support for automatic waiting-list promotion |
+| V3 | Group-booking references and passenger names |
+
+Existing schemas are baselined at version 0. Add a new migration for future changes rather than editing applied versions. `database/schema.sql` also supports portable local provisioning and disposable integration-test schemas.
+
+**Fresh hosted databases contain no demo users, stations, trains, or journeys.** Account and operational data must be provisioned separately. Hosting database retention/expiry is provider-dependent; the public demo is not a permanent data archive.
+
+## Repository structure
+
+```text
+├── src/main/java/com/trainticket/
+│   ├── api/              # Validated REST endpoints and API errors
+│   ├── config/           # Security, data-source integration, OpenAPI
+│   ├── controller/       # Jakarta Servlet browser workflows
+│   ├── dao/              # JDBC queries, locking, reservation transactions
+│   ├── filter/           # Shared CSRF validation
+│   ├── model/            # Users, trains, stations, journeys, tickets
+│   ├── service/          # API reservation orchestration and ownership
+│   └── util/             # Database access, hashing, escaping
+├── src/main/resources/   # Configuration and Flyway migrations
+├── src/main/webapp/      # JSP views and local UI assets
+├── src/test/             # Unit and PostgreSQL integration tests
+├── database/             # Local schema and demonstration seed data
+├── scripts/              # Development lifecycle and smoke checks
+├── docs/images/          # Screenshots of the working application
+├── .github/workflows/    # CI build and verification
+├── Dockerfile
+├── compose.yaml
+└── pom.xml
+```
+
+## Current scope and next steps
+
+The current implementation covers the reservation lifecycle, group booking, authorization, audit events, API documentation, and containerized deployment. The following are **future extensions**, not shipped features:
+
+- Multiple travel classes, berth preferences, and an interactive seat map.
+- Email notifications and application-generated downloadable PDF tickets.
+- Payment sandbox integration and a separate payment lifecycle.
+- RAC/berth-sharing and route-segment seat reuse.
+- Integration with a real railway timetable or reservation provider.
+
+Browser printing is implemented; a server-side PDF-generation service is not. The system currently allocates seats for a complete journey rather than reusing seats across intermediate route segments.
+
+## Author
+
+**[Shambhavi Singh](https://github.com/ShambhaviSingh16)**
+
+TrackEase documents the evolution of a servlet-based academic project into a tested, deployable full-stack Java application—with particular attention to booking correctness, clear user workflows, and maintainable delivery.
