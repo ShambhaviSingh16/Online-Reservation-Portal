@@ -1,7 +1,7 @@
 package com.trainticket.controller;
 
 import com.trainticket.model.User;
-import com.trainticket.dao.StationDAO;
+
 import com.trainticket.model.Station;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -14,6 +14,13 @@ import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/admin/station")
 public class AdminStationServlet extends HttpServlet {
+    private com.trainticket.service.CatalogService catalog;
+    @Override public void init() throws ServletException {
+        catalog = org.springframework.web.context.support.WebApplicationContextUtils
+            .getRequiredWebApplicationContext(getServletContext())
+            .getBean(com.trainticket.service.CatalogService.class);
+    }
+
     
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
@@ -41,8 +48,8 @@ public class AdminStationServlet extends HttpServlet {
             station.setCity(request.getParameter("city"));
             station.setState(request.getParameter("state"));
             
-            StationDAO stationDAO = new StationDAO();
-            boolean success = stationDAO.addStation(station);
+
+            boolean success = catalog.addStation(station);
             
             if (success) {
                 response.sendRedirect(request.getContextPath() + "/admin/station?success=Station+added+successfully");
@@ -56,14 +63,14 @@ public class AdminStationServlet extends HttpServlet {
             }
         } catch (Exception e) {
             response.sendRedirect(request.getContextPath() + 
-                "/admin/station?error=Error+adding+station:+" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                "/admin/station?error=Error+adding+station:+" + "Please+check+the+fields+and+try+again");
         }
     }
     
     private void handleEditDelete(HttpServletRequest request, HttpServletResponse response, String action) 
             throws IOException {
         try {
-            StationDAO stationDAO = new StationDAO();
+
             String message = "";
             boolean success = false;
             
@@ -75,12 +82,12 @@ public class AdminStationServlet extends HttpServlet {
                 station.setCity(request.getParameter("city"));
                 station.setState(request.getParameter("state"));
                 
-                success = stationDAO.updateStation(station);
+                success = catalog.updateStation(station);
                 message = success ? "Station+updated+successfully" : "Failed+to+update+station";
                 
             } else if ("delete".equals(action)) {
                 int stationId = Integer.parseInt(request.getParameter("stationId"));
-                success = stationDAO.deleteStation(stationId);
+                success = catalog.deleteStation(stationId);
                 message = success ? "Station+archived+successfully" : "Failed+to+delete+station";
             }
             
@@ -89,7 +96,7 @@ public class AdminStationServlet extends HttpServlet {
             
         } catch (Exception e) {
             response.sendRedirect(request.getContextPath() + 
-                "/admin/station?error=Operation+failed:+" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                "/admin/station?error=Operation+failed:+" + "Please+check+the+fields+and+try+again");
         }
     }
     
@@ -117,11 +124,11 @@ public class AdminStationServlet extends HttpServlet {
                 request.setAttribute("state", request.getParameter("state"));
             }
             
-            StationDAO stationDAO = new StationDAO();
-            request.setAttribute("stations", stationDAO.getAllStations());
+
+            request.setAttribute("stations", catalog.getAllStations());
             request.getRequestDispatcher("/admin/manageStations.jsp").forward(request, response);
         } catch (Exception e) {
-            request.setAttribute("error", "Error loading stations: " + e.getMessage());
+            request.setAttribute("error", "Unable to load stations. Please try again.");
             request.getRequestDispatcher("/admin/manageStations.jsp").forward(request, response);
         }
     }

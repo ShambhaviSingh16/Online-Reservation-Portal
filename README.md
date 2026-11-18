@@ -110,14 +110,14 @@ Screenshots below show the working application with seeded **local demonstration
 | Browser workflows | Jakarta Servlets, JSP, HTML, CSS, JavaScript |
 | UI components | Bootstrap 5.1.3, Font Awesome 6.0.0; jQuery 3.6.0 for retained admin forms |
 | Authentication and authorization | Spring Security, server-side sessions, passenger/admin roles |
-| Persistence | PostgreSQL, JDBC, HikariCP connection pooling |
+| Persistence | PostgreSQL, Spring Data JPA / Hibernate for catalog management, JDBC for reservations, HikariCP |
 | Schema management | Flyway versioned migrations |
 | API | Spring MVC, Jakarta Bean Validation, OpenAPI / Swagger UI |
 | Documents and notifications | Apache PDFBox, Brevo HTTPS API or local SMTP, transactional notification outbox |
 | Verification | JUnit 5, PostgreSQL integration tests, HTTP smoke scripts, Playwright browser checks |
 | Delivery | Multi-stage Docker build, Docker Compose, GitHub Actions, Render |
 
-Dependencies are pinned in [`pom.xml`](pom.xml). PostgreSQL 17 is used in CI. The application uses JDBC rather than an ORM; authentication is session-based rather than JWT-based.
+Dependencies are declared in [`pom.xml`](pom.xml), with Spring Boot managing compatible framework versions. PostgreSQL 17 is used in CI. Train/station management uses Spring Data JPA and Hibernate; reservation allocation retains explicit JDBC transactions. Authentication is session-based rather than JWT-based. See [Java Collections, persistence, and Maven walkthrough](docs/JAVA_PERSISTENCE.md) for concrete code examples and transaction boundaries.
 
 ## Architecture
 
@@ -131,6 +131,10 @@ flowchart TB
     API --> Service["Reservation service · API orchestration / ownership"]
     Service --> DAO
     API --> DAO
+    Web --> Catalog["Catalog service · train/station transactions"]
+    API --> Catalog
+    Catalog --> Repositories["Spring Data JPA repositories + Hibernate"]
+    Repositories --> Pool
     DAO --> Pool["HikariCP connection pool"]
     Pool --> DB[("PostgreSQL")]
     Flyway["Flyway migrations"] --> DB
@@ -145,6 +149,7 @@ The existing servlet/JSP workflows were retained during the Spring Boot migratio
 - **Keep tickets individually manageable.** Group membership does not remove each passenger's status, waiting position, or cancellation lifecycle.
 - **Record changes rather than erase history.** Cancelled tickets and booking events remain available; promotion events distinguish system actions from user actions.
 - **Modernize incrementally.** Existing JSP and JDBC workflows remain usable while Spring Boot adds embedded hosting, security integration, pooling, migrations, and REST documentation.
+- **Use JPA for catalog persistence.** Train/station forms and API endpoints share a transactional service, entity mappings, derived repository queries, Specifications, and server-side pagination. Entities are mapped to existing DTOs before reaching the browser. Hibernate validates the Flyway-managed schema; Open EntityManager in View is disabled.
 
 ### Reservation rules
 
@@ -327,7 +332,7 @@ Legacy accounts that have not logged in still require migration or a password re
 
 ## Testing
 
-The latest local verification completed **42 JUnit tests with zero failures, errors, or skips**, including **35 PostgreSQL integration tests**. Test counts describe the verified implementation; workflow status and generated reports provide current build evidence.
+The latest local verification completed **47 JUnit tests with zero failures, errors, or skips**, including **40 PostgreSQL integration tests**. Test counts describe the verified implementation; workflow status and generated reports provide current build evidence.
 
 | Verification layer | Coverage |
 | --- | --- |
@@ -338,6 +343,7 @@ The latest local verification completed **42 JUnit tests with zero failures, err
 | Group browser/API checks | Multiple named passengers, total fare, unique seats, retry safety, validation, ownership, individual cancellation, mobile rendering, and print output |
 | Swagger browser checks | Real Try it out flow: CSRF setup, login, session refresh, authenticated access, and logout |
 | Advanced integration tests | Overlapping-seat contention, segment reuse, atomic holds/groups, hold expiry, class fares, RAC sharing/promotion, recovery-token reuse, notification delivery, and PDF contents |
+| JPA/Hibernate integration tests | Actual Flyway migrations and schema validation, generated IDs, dirty checking, archive/history retention, literal search, pagination, duplicate races, and shared JPA/Spring JDBC rollback |
 
 ```powershell
 # Unit tests; database integration tests are opt-in
@@ -355,6 +361,7 @@ npm install --prefix .local/browser-test --no-audit --no-fund playwright
 node scripts/smoke-ui.cjs
 node scripts/smoke-group.cjs
 node scripts/smoke-swagger.cjs
+node scripts/smoke-jpa.cjs
 ```
 
 `scripts/smoke-features.cjs` additionally exercises advanced workflows through the browser and captures real JavaMail traffic in an in-process local SMTP inbox. It requires the test email configuration described in [EMAIL_SETUP.md](docs/EMAIL_SETUP.md); it never sends mail to an external provider.
@@ -406,6 +413,7 @@ Existing schemas are baselined at version 0. Add a new migration for future chan
 │   ├── dao/              # JDBC queries, locking, reservation transactions
 │   ├── filter/           # Shared CSRF validation
 │   ├── model/            # Users, trains, stations, journeys, tickets
+│   ├── persistence/      # JPA train/station entities and Spring Data repositories
 │   ├── service/          # API reservation orchestration and ownership
 │   └── util/             # Database access, hashing, escaping
 ├── src/main/resources/   # Configuration and Flyway migrations

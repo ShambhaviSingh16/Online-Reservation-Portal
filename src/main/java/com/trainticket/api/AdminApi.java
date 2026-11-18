@@ -18,7 +18,8 @@ import org.springframework.validation.annotation.Validated;
 @RestController @RequestMapping("/api/admin") @Validated
 public class AdminApi {
     private final JdbcTemplate jdbc;
-    public AdminApi(JdbcTemplate jdbc) { this.jdbc=jdbc; }
+    private final com.trainticket.service.CatalogService catalog;
+    public AdminApi(JdbcTemplate jdbc,com.trainticket.service.CatalogService catalog) { this.jdbc=jdbc; this.catalog=catalog; }
     public record TrainInput(@NotBlank @Size(max=30) String trainNumber,@NotBlank @Size(max=200) String trainName,@Min(1) @Max(2000) int totalSeats) { }
     public record StationInput(@NotBlank @Pattern(regexp="[A-Za-z0-9]{2,20}") String stationCode,@NotBlank @Size(max=200) String stationName,
         @NotBlank @Size(max=100) String city,@NotBlank @Size(max=100) String state) { }
@@ -40,27 +41,27 @@ public class AdminApi {
         journey.setDepartureTime(java.sql.Timestamp.valueOf(input.departureTime())); journey.setArrivalTime(java.sql.Timestamp.valueOf(input.arrivalTime()));
         journey.setFare(input.fare().doubleValue()); journey.setAvailableSeats(input.availableSeats()); return journey;
     }
-    @GetMapping("/trains") public List<Train> trains() { return new TrainDAO().getAllTrains(); }
+    @GetMapping("/trains") public List<Train> trains() { return catalog.getAllTrains(); }
     @PostMapping("/trains") @ResponseStatus(HttpStatus.CREATED)
     public Map<String,String> addTrain(@Valid @RequestBody TrainInput input,HttpServletRequest req) throws SQLException {
-        success(new TrainDAO().addTrain(train(input,0),AuthApi.user(req.getSession(false)).getUserId())); return Map.of("message","Train created");
+        success(catalog.addTrain(train(input,0),AuthApi.user(req.getSession(false)).getUserId())); return Map.of("message","Train created");
     }
     @PutMapping("/trains/{id}") public Map<String,String> updateTrain(@PathVariable @Positive int id,@Valid @RequestBody TrainInput input) throws SQLException {
-        success(new TrainDAO().updateTrain(train(input,id))); return Map.of("message","Train updated");
+        success(catalog.updateTrain(train(input,id))); return Map.of("message","Train updated");
     }
     @DeleteMapping("/trains/{id}") public Map<String,String> archiveTrain(@PathVariable @Positive int id) throws SQLException {
-        success(new TrainDAO().deleteTrain(id)); return Map.of("message","Train archived; historical bookings retained");
+        success(catalog.deleteTrain(id)); return Map.of("message","Train archived; historical bookings retained");
     }
-    @GetMapping("/stations") public List<Station> stations() { return new StationDAO().getAllStations(); }
+    @GetMapping("/stations") public List<Station> stations() { return catalog.getAllStations(); }
     @PostMapping("/stations") @ResponseStatus(HttpStatus.CREATED)
     public Map<String,String> addStation(@Valid @RequestBody StationInput input) throws SQLException {
-        success(new StationDAO().addStation(station(input,0))); return Map.of("message","Station created");
+        success(catalog.addStation(station(input,0))); return Map.of("message","Station created");
     }
     @PutMapping("/stations/{id}") public Map<String,String> updateStation(@PathVariable @Positive int id,@Valid @RequestBody StationInput input) throws SQLException {
-        success(new StationDAO().updateStation(station(input,id))); return Map.of("message","Station updated");
+        success(catalog.updateStation(station(input,id))); return Map.of("message","Station updated");
     }
     @DeleteMapping("/stations/{id}") public Map<String,String> archiveStation(@PathVariable @Positive int id) throws SQLException {
-        success(new StationDAO().deleteStation(id)); return Map.of("message","Station archived; historical bookings retained");
+        success(catalog.deleteStation(id)); return Map.of("message","Station archived; historical bookings retained");
     }
     @GetMapping("/journeys") public List<Journey> journeys() { return new JourneyDAO().getAllJourneys(); }
     @PostMapping("/journeys") @ResponseStatus(HttpStatus.CREATED)

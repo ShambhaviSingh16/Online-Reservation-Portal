@@ -17,7 +17,8 @@ import org.springframework.http.HttpStatus;
 public class ReservationApi {
     private final ReservationService service;
     private final JdbcTemplate jdbc;
-    public ReservationApi(ReservationService service,JdbcTemplate jdbc) { this.service=service; this.jdbc=jdbc; }
+    private final com.trainticket.service.CatalogService catalog;
+    public ReservationApi(ReservationService service,JdbcTemplate jdbc,com.trainticket.service.CatalogService catalog) { this.service=service; this.jdbc=jdbc; this.catalog=catalog; }
     public record Booking(@Positive int journeyId,@NotNull UUID requestId,boolean joinWaitingList) { }
     public record GroupBookingRequest(@Positive int journeyId,@NotNull UUID requestId,
             @NotNull @Size(min=1,max=6) List<@NotBlank @Size(max=100) String> passengerNames,boolean joinWaitingList) { }
@@ -39,7 +40,7 @@ public class ReservationApi {
         if(tickets.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Booking not found.");
         return Map.of("bookingId",bookingId,"tickets",tickets);
     }
-    @GetMapping("/stations") public List<Station> stations() { return new StationDAO().getAllStations(); }
+    @GetMapping("/stations") public List<Station> stations() { return catalog.getAllStations(); }
     @GetMapping("/journeys/search") public List<Journey> search(@RequestParam @Positive int departureStation,
             @RequestParam @Positive int arrivalStation,@RequestParam LocalDate travelDate) {
         return new JourneyDAO().searchJourneys(departureStation,arrivalStation,java.sql.Date.valueOf(travelDate));

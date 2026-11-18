@@ -12,16 +12,14 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController @RequestMapping("/api/admin/catalog") @Validated
 public class AdminCatalogApi {
     private final JdbcTemplate jdbc;
-    public AdminCatalogApi(JdbcTemplate jdbc){this.jdbc=jdbc;}
+    private final com.trainticket.service.CatalogService catalog;
+    public AdminCatalogApi(JdbcTemplate jdbc,com.trainticket.service.CatalogService catalog){this.jdbc=jdbc;this.catalog=catalog;}
     @GetMapping public Map<String,Object> search(@RequestParam(defaultValue="bookings") String type,
             @RequestParam(defaultValue="") @Size(max=100) String q,@RequestParam(defaultValue="all") String filter,
             @RequestParam(defaultValue="0") @Min(0) @Max(100000) int page,@RequestParam(defaultValue="10") @Min(1) @Max(100) int size) {
+        if(type.equals("trains") || type.equals("stations")) return catalog.search(type,q,filter,page,size);
         String select,from,search,condition="TRUE",order;
         switch(type) {
-            case "trains" -> {select="t.train_id AS id,t.train_number,t.train_name,t.total_seats,t.is_active";from="trains t";search="concat_ws(' ',t.train_number,t.train_name)";order="t.train_id";
-                if(!Set.of("all","active","archived").contains(filter))throw invalid();if(!filter.equals("all"))condition="t.is_active="+filter.equals("active");}
-            case "stations" -> {select="s.station_id AS id,s.station_code,s.station_name,s.city,s.state,s.is_active";from="stations s";search="concat_ws(' ',s.station_code,s.station_name,s.city,s.state)";order="s.station_id";
-                if(!Set.of("all","active","archived").contains(filter))throw invalid();if(!filter.equals("all"))condition="s.is_active="+filter.equals("active");}
             case "journeys" -> {select="j.journey_id AS id,t.train_name,ds.station_code AS departure,ar.station_code AS arrival,j.departure_time,j.arrival_time,j.fare,j.available_seats";
                 from="journeys j JOIN trains t ON t.train_id=j.train_id JOIN stations ds ON ds.station_id=j.departure_station_id JOIN stations ar ON ar.station_id=j.arrival_station_id";
                 search="concat_ws(' ',j.journey_id,t.train_name,t.train_number,ds.station_name,ar.station_name)";order="j.departure_time";

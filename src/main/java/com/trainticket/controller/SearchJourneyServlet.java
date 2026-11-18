@@ -1,7 +1,7 @@
 package com.trainticket.controller;
 
 import com.trainticket.dao.JourneyDAO;
-import com.trainticket.dao.StationDAO;
+
 import java.io.IOException;
 import java.sql.Date;
 import jakarta.servlet.ServletException;
@@ -13,6 +13,13 @@ import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/user/searchJourney")
 public class SearchJourneyServlet extends HttpServlet {
+    private com.trainticket.service.CatalogService catalog;
+    @Override public void init() throws ServletException {
+        catalog = org.springframework.web.context.support.WebApplicationContextUtils
+            .getRequiredWebApplicationContext(getServletContext())
+            .getBean(com.trainticket.service.CatalogService.class);
+    }
+
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
@@ -27,11 +34,11 @@ public class SearchJourneyServlet extends HttpServlet {
         Date travelDate = Date.valueOf(request.getParameter("travelDate"));
         
         JourneyDAO journeyDAO = new JourneyDAO();
-        StationDAO stationDAO = new StationDAO();
+
         
         request.setAttribute("journeys", journeyDAO.searchJourneys(departureStationId, arrivalStationId, travelDate));
-        request.setAttribute("departureStation", stationDAO.getStationById(departureStationId));
-        request.setAttribute("arrivalStation", stationDAO.getStationById(arrivalStationId));
+        request.setAttribute("departureStation", catalog.getStationById(departureStationId));
+        request.setAttribute("arrivalStation", catalog.getStationById(arrivalStationId));
         request.setAttribute("travelDate", travelDate);
         
         request.getRequestDispatcher("/user/journeyResults.jsp").forward(request, response);

@@ -1,6 +1,6 @@
 package com.trainticket.controller;
 import com.trainticket.model.User;
-import com.trainticket.dao.TrainDAO;
+
 import com.trainticket.model.Train;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -13,6 +13,13 @@ import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/admin/train")
 public class AdminTrainServlet extends HttpServlet {
+    private com.trainticket.service.CatalogService catalog;
+    @Override public void init() throws ServletException {
+        catalog = org.springframework.web.context.support.WebApplicationContextUtils
+            .getRequiredWebApplicationContext(getServletContext())
+            .getBean(com.trainticket.service.CatalogService.class);
+    }
+
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
@@ -38,8 +45,8 @@ public class AdminTrainServlet extends HttpServlet {
             train.setTrainName(request.getParameter("trainName"));
             train.setTotalSeats(Integer.parseInt(request.getParameter("totalSeats")));
             
-            TrainDAO trainDAO = new TrainDAO();
-            boolean success = trainDAO.addTrain(train, ((User)session.getAttribute("user")).getUserId());
+
+            boolean success = catalog.addTrain(train, ((User)session.getAttribute("user")).getUserId());
             
             if (success) {
                 response.sendRedirect(request.getContextPath() + "/admin/train?success=Train+added+successfully");
@@ -52,14 +59,14 @@ public class AdminTrainServlet extends HttpServlet {
             }
         } catch (Exception e) {
             response.sendRedirect(request.getContextPath() + 
-                "/admin/train?error=Error+adding+train:+" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                "/admin/train?error=Error+adding+train:+" + "Please+check+the+fields+and+try+again");
         }
     }
     
     private void handleEditDelete(HttpServletRequest request, HttpServletResponse response, 
             String action, HttpSession session) throws IOException {
         try {
-            TrainDAO trainDAO = new TrainDAO();
+
             String message = "";
             boolean success = false;
             
@@ -70,12 +77,12 @@ public class AdminTrainServlet extends HttpServlet {
                 train.setTrainName(request.getParameter("trainName"));
                 train.setTotalSeats(Integer.parseInt(request.getParameter("totalSeats")));
                 
-                success = trainDAO.updateTrain(train);
+                success = catalog.updateTrain(train);
                 message = success ? "Train+updated+successfully" : "Failed+to+update+train";
                 
             } else if ("delete".equals(action)) {
                 int trainId = Integer.parseInt(request.getParameter("trainId"));
-                success = trainDAO.deleteTrain(trainId);
+                success = catalog.deleteTrain(trainId);
                 message = success ? "Train+archived+successfully" : "Failed+to+delete+train";
             }
             
@@ -84,7 +91,7 @@ public class AdminTrainServlet extends HttpServlet {
             
         } catch (Exception e) {
             response.sendRedirect(request.getContextPath() + 
-                "/admin/train?error=Operation+failed:+" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                "/admin/train?error=Operation+failed:+" + "Please+check+the+fields+and+try+again");
         }
     }
     
@@ -111,11 +118,11 @@ public class AdminTrainServlet extends HttpServlet {
                 request.setAttribute("totalSeats", request.getParameter("totalSeats"));
             }
             
-            TrainDAO trainDAO = new TrainDAO();
-            request.setAttribute("trains", trainDAO.getAllTrains());
+
+            request.setAttribute("trains", catalog.getAllTrains());
             request.getRequestDispatcher("/admin/manageTrains.jsp").forward(request, response);
         } catch (Exception e) {
-            request.setAttribute("error", "Error loading trains: " + e.getMessage());
+            request.setAttribute("error", "Unable to load trains. Please try again.");
             request.getRequestDispatcher("/admin/manageTrains.jsp").forward(request, response);
         }
     }

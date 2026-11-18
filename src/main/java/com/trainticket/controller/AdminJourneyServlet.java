@@ -2,8 +2,8 @@ package com.trainticket.controller;
 
 import com.trainticket.model.User;
 import com.trainticket.dao.JourneyDAO;
-import com.trainticket.dao.StationDAO;
-import com.trainticket.dao.TrainDAO;
+
+
 import com.trainticket.model.Journey;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -19,6 +19,13 @@ import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/admin/journey")
 public class AdminJourneyServlet extends HttpServlet {
+    private com.trainticket.service.CatalogService catalog;
+    @Override public void init() throws ServletException {
+        catalog = org.springframework.web.context.support.WebApplicationContextUtils
+            .getRequiredWebApplicationContext(getServletContext())
+            .getBean(com.trainticket.service.CatalogService.class);
+    }
+
     
     private static final DateTimeFormatter DATETIME_FORMATTER = 
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
@@ -89,13 +96,13 @@ String action = request.getParameter("action");
             
         } catch (NumberFormatException e) {
             response.sendRedirect(request.getContextPath() + 
-                "/admin/journey?error=Invalid+number+format:+" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                "/admin/journey?error=Invalid+number+format:+" + "Please+check+the+fields+and+try+again");
         } catch (IllegalArgumentException e) {
             response.sendRedirect(request.getContextPath() + 
-                "/admin/journey?error=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                "/admin/journey?error=" + "Please+check+the+fields+and+try+again");
         } catch (Exception e) {
             response.sendRedirect(request.getContextPath() + 
-                "/admin/journey?error=System+error:+" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                "/admin/journey?error=System+error:+" + "Please+check+the+fields+and+try+again");
         }
     }
     
@@ -133,7 +140,7 @@ String action = request.getParameter("action");
             
         } catch (Exception e) {
             response.sendRedirect(request.getContextPath() + 
-                "/admin/journey?error=Operation+failed:+" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+                "/admin/journey?error=Operation+failed:+" + "Please+check+the+fields+and+try+again");
         }
     }
     
@@ -165,12 +172,12 @@ String action = request.getParameter("action");
             }
             
             JourneyDAO journeyDAO = new JourneyDAO();
-            TrainDAO trainDAO = new TrainDAO();
-            StationDAO stationDAO = new StationDAO();
+
+
             
             request.setAttribute("journeys", journeyDAO.getAllJourneys());
-            request.setAttribute("trains", trainDAO.getAllTrains());
-            request.setAttribute("stations", stationDAO.getAllStations());
+            request.setAttribute("trains", catalog.getAllTrains());
+            request.setAttribute("stations", catalog.getAllStations());
             
             request.getRequestDispatcher("/admin/manageJourneys.jsp").forward(request, response);
         } catch (Exception e) {
